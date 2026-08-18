@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Meridian pre-commit guard.
+# A leaked key in a public repo's history is permanent and gets revoked.
+# Install: bash scripts/install-hooks.sh
+set -uo pipefail
+
+fail() { printf '\n\033[31mBLOCKED:\033[0m %s\n' "$1" >&2; exit 1; }
+
+# 1. No .env file may ever be staged (only .env.example is allowed).
+staged_env=$(git diff --cached --name-only | grep -E '(^|/)\.env($|\.)' | grep -v '\.env\.example$' || true)
+[ -n "$staged_env" ] && fail "attempt to commit an env file:
+$staged_env
+Remove it:  git rm --cached <file>"
+
+# 2. No key-shaped string may appear in added lines.
+added=$(git diff --cached -U0 -- . ':(exclude)scripts/pre-commit' | grep '^+' | grep -v '^+++' || true)
+[ -z "$added" ] && exit 0
+
+declare -a NAMES=(
+  "Groq API key"
+  "Google AI Studio key"
+  "OpenAI/Anthropic-style key"
+  "Hugging Face token"
+  "GitHub token"
+  "AWS access key id"
+  "Postgres URL containing a password"
+  "Private key block"
+)
+declare -a PATTERNS=(
+  'gsk_[A-Za-z0-9]{20,}'
+  'AIza[A-Za-z0-9_-]{30,}'
+  'sk-[A-Za-z0-9]{20,}'
+  'hf_[A-Za-z0-9]{20,}'
+  'gh[pousr]_[A-Za-z0-9]{20,}'
+  'AKIA[0-9A-Z]{16}'
+  'postgres(ql)?://[^:[:space:]]+:[^@[:space:]]+@'
+  'BEGIN [A-Z ]*PRIVATE KEY'
+)
+
+for i in "${!PATTERNS[@]}"; do
+  if hit=$(printf '%s\n' "$added" | grep -nE "${PATTERNS[$i]}" | head -3); then
+    [ -n "$hit" ] && fail "${NAMES[$i]} found in staged changes:
+$hit
+If this is a placeholder, make it obviously fake (e.g. gsk_REPLACE_ME)."
+  fi
+done
+
+exit 0

@@ -1,0 +1,46 @@
+# ── Secrets — never commit ──
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ── Node / Next.js ──
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+.vercel
+
+# ── Models & caches (fastembed downloads ONNX weights at runtime) ──
+.cache/
+models/
+*.onnx
+
+# ── Eval outputs (results are regenerated; baseline is committed explicitly) ──
+sextant/results/
+!sextant/results/baseline.json
+
+# ── OS / editor ──
+.DS_Store
+Thumbs.db
+.idea/
+*.swp

@@ -7,7 +7,9 @@ them without editing source.
 
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Provider = Literal["groq", "gemini", "ollama"]
@@ -50,6 +52,39 @@ class Settings(BaseSettings):
     chunk_overlap: int = 80
     retrieve_top_k: int = 6
 
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalise_pg_url(cls, v: str) -> str:
+        """Accept a connection string copied verbatim from a Neon dashboard.
+
+        Neon hands out a libpq-style URL. asyncpg speaks a different dialect,
+        so rather than making a human remember three edits under time pressure
+        (and debug a confusing driver error when they forget one), the
+        translation happens here:
+
+          postgresql://       -> postgresql+asyncpg://
+          ?sslmode=require    -> ?ssl=require
+          &channel_binding=.. -> dropped (libpq-only; asyncpg rejects it)
+        """
+        if not v:
+            return v
+        parts = urlsplit(v)
+
+        scheme = parts.scheme
+        if scheme in ("postgres", "postgresql"):
+            scheme = "postgresql+asyncpg"
+
+        keep: list[tuple[str, str]] = []
+        for key, value in parse_qsl(parts.query, keep_blank_values=True):
+            if key == "sslmode":
+                keep.append(("ssl", "require" if value in ("require", "verify-full", "verify-ca") else value))
+            elif key in ("channel_binding", "options", "application_name"):
+                continue  # libpq-only; asyncpg raises on these
+            else:
+                keep.append((key, value))
+
+        return urlunsplit((scheme, parts.netloc, parts.path, urlencode(keep), parts.fragment))
 
     @property
     def insecure_jwt_secret(self) -> bool:

@@ -23,7 +23,9 @@ class Settings(BaseSettings):
     db_echo: bool = False
 
     # ── auth ──
-    jwt_secret: str = "dev-only-not-a-real-secret"
+    # Dev-only default, 32+ bytes so PyJWT does not warn. Production must
+    # override it; see `insecure_jwt_secret` below.
+    jwt_secret: str = "dev-only-insecure-secret-do-not-ship-0123456789"
     jwt_algorithm: str = "HS256"
     jwt_ttl_minutes: int = 1440
 
@@ -47,6 +49,12 @@ class Settings(BaseSettings):
     chunk_tokens: int = 600
     chunk_overlap: int = 80
     retrieve_top_k: int = 6
+
+
+    @property
+    def insecure_jwt_secret(self) -> bool:
+        """True when still running on the built-in development secret."""
+        return self.jwt_secret.startswith("dev-only-")
 
 
 @lru_cache

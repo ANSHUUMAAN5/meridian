@@ -14,6 +14,12 @@ Remove it:  git rm --cached <file>"
 
 # 2. No key-shaped string may appear in added lines.
 added=$(git diff --cached -U0 -- . ':(exclude)scripts/pre-commit' | grep '^+' | grep -v '^+++' || true)
+
+# Drop lines that are self-evidently templates. A real credential is not the
+# literal word PASSWORD or REPLACE_ME, so this narrows false positives on
+# .env.example without weakening the check against actual secrets.
+added=$(printf '%s\n' "$added" | grep -vE 'REPLACE_ME|REPLACE_WITH|<[A-Z_]+>|\bPASSWORD\b|\bUSER\b|\bYOUR_[A-Z_]+|EXAMPLE_[A-Z_]+' || true)
+
 [ -z "$added" ] && exit 0
 
 declare -a NAMES=(

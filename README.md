@@ -55,7 +55,7 @@ Runs end to end at **$0.00** — no paid inference, no credit card.
 ```bash
 git clone <repo> && cd meridian
 bash scripts/install-hooks.sh      # secret guard — do this first
-cp .env.example .env               # then fill it in
+cp backend/.env.example backend/.env   # then fill it in
 ```
 
 `.env` is gitignored and a pre-commit hook rejects key-shaped strings. Nothing

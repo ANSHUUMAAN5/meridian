@@ -21,7 +21,12 @@ class Settings(BaseSettings):
     )
 
     # ── database ──
+    # The application connects as a restricted role with no BYPASSRLS, so the
+    # policies in migration 0001 actually apply. See scripts/create_app_role.py.
     database_url: str = "postgresql+asyncpg://localhost/meridian"
+    # The owner role, used only by Alembic. Has BYPASSRLS — never used to serve
+    # a request, or tenant isolation silently stops working.
+    migration_database_url: str | None = None
     db_echo: bool = False
 
     # ── auth ──
@@ -53,9 +58,9 @@ class Settings(BaseSettings):
     retrieve_top_k: int = 6
 
 
-    @field_validator("database_url")
+    @field_validator("database_url", "migration_database_url")
     @classmethod
-    def _normalise_pg_url(cls, v: str) -> str:
+    def _normalise_pg_url(cls, v: str | None) -> str | None:
         """Accept a connection string copied verbatim from a Neon dashboard.
 
         Neon hands out a libpq-style URL. asyncpg speaks a different dialect,

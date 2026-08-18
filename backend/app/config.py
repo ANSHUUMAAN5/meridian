@@ -61,6 +61,12 @@ class Settings(BaseSettings):
     chunk_overlap: int = 80
     retrieve_top_k: int = 6
 
+    # ── demo access ──
+    # The console offers one-click sign-in so a visitor never has to register.
+    # It can only ever mint tokens for tenants named here, so adding a real
+    # customer to this database does not expose them through the demo door.
+    demo_tenant_slugs: list[str] = ["kite", "nimbus"]
+
 
     @field_validator("database_url", "migration_database_url")
     @classmethod

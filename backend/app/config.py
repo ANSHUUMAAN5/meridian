@@ -53,7 +53,11 @@ class Settings(BaseSettings):
     # ── retrieval ──
     embed_model: str = "BAAI/bge-small-en-v1.5"
     embed_dim: int = 384
-    chunk_tokens: int = 600
+    # bge-small is BERT-based and silently truncates at 512 tokens — verified
+    # empirically: appending text past that point leaves the vector byte-identical.
+    # Chunks must stay under it or their tails are embedded as nothing at all.
+    embed_max_tokens: int = 512
+    chunk_tokens: int = 400
     chunk_overlap: int = 80
     retrieve_top_k: int = 6
 

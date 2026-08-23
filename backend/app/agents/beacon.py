@@ -1,17 +1,3 @@
-"""Beacon — hands a case to a human. The only agent that writes to escalations.
-
-Beacon makes no judgment call of its own — by the time it runs, Threshold has
-already decided escalation is necessary (confidence too low, or a write-tier
-action needing confirmation, or a hard rule). Beacon's only job is to make
-that handoff useful: capture *why*, at what confidence, and leave the full
-reasoning trail for the person who picks it up.
-
-This is deliberately the smallest agent. It calls no model — there is nothing
-to decide, only something to record. Compare to Threshold (app/threshold.py),
-which is the same idea applied to gating: don't spend a model call on a step
-that doesn't need one.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -29,10 +15,6 @@ class EscalationResult:
 
     @property
     def customer_reply(self) -> str:
-        """What the customer sees. Deliberately does not explain the gating
-        mechanics — 'your confidence score was 0.61' means nothing to a
-        customer and reads as evasive. The reasoning lives in the escalation
-        record for the human, not in this reply."""
         return (
             "I want to make sure this is handled correctly, so I'm connecting "
             "you with someone from our team who can help."
@@ -47,16 +29,12 @@ async def escalate(
     gate: Gate,
 ) -> EscalationResult:
     row = Escalation(
-        tenant_id=None,  # set by the caller's tenant-scoped session via RLS default path — see note below
+        tenant_id=None,
         conversation_id=conversation_id,
         reason=gate.reason,
         confidence=gate.confidence,
         status="open",
     )
-    # tenant_id has no default and RLS's WITH CHECK requires it to match the
-    # session's bound tenant — read it back off the session's own setting
-    # rather than accept it as a parameter, so Beacon cannot be called with
-    # the wrong tenant's id by a caller mistake.
     from sqlalchemy import text
 
     tenant_id = (

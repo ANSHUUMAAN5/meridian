@@ -1,12 +1,3 @@
-"""Tenant-scoped vector search.
-
-There is deliberately no `tenant_id` filter in the query below. That is the
-point of putting vectors in Postgres rather than an external vector database:
-the row-level security policy governs retrieval itself, so a missing or wrong
-filter cannot leak another tenant's content. The isolation test suite asserts
-exactly this by running the search with no filter at all.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -31,7 +22,6 @@ class Retrieved:
 
     @property
     def similarity(self) -> float:
-        """Cosine similarity in [0, 1]; pgvector returns cosine *distance*."""
         return 1.0 - self.distance
 
 
@@ -40,7 +30,6 @@ async def search(
 ) -> list[Retrieved]:
     top_k = top_k or get_settings().retrieve_top_k
 
-    # bge is asymmetric: the query gets an instruction prefix, passages do not.
     vector = await asyncio.to_thread(embed_query, query)
 
     distance = Chunk.embedding.cosine_distance(vector).label("distance")

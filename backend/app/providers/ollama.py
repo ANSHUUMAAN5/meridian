@@ -1,9 +1,3 @@
-"""Local Ollama. Development and offline smoke tests only — never deployed.
-
-Exists so the whole pipeline can be built and tested without an API key and
-without spending free-tier rate limits on every iteration.
-"""
-
 from __future__ import annotations
 
 import time

@@ -1,10 +1,3 @@
-"""Runtime configuration, loaded from environment / .env.
-
-Every tunable that the evaluation suite sweeps (the thresholds, top_k, chunk
-sizes) lives here rather than as a constant in the code, so Sextant can vary
-them without editing source.
-"""
-
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -17,93 +10,45 @@ Provider = Literal["groq", "gemini", "ollama"]
 
 
 class Settings(BaseSettings):
-    # An env_file of plain ".env" resolves against the CURRENT WORKING
-    # DIRECTORY of whoever runs the process — not against this file's own
-    # location. A script invoked from the repo root instead of backend/
-    # (e.g. sextant/run.py, called as `python sextant/run.py` from
-    # ~/Meridian) would silently find no .env file and fall back to the
-    # hardcoded localhost default below, rather than erroring — exactly the
-    # "fails open" shape this project avoids everywhere else. Anchoring to
-    # this file's own directory makes .env load correctly no matter where
-    # the process was launched from.
     model_config = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[1] / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
 
-    # ── database ──
-    # The application connects as a restricted role with no BYPASSRLS, so the
-    # policies in migration 0001 actually apply. See scripts/create_app_role.py.
     database_url: str = "postgresql+asyncpg://localhost/meridian"
-    # The owner role, used only by Alembic. Has BYPASSRLS — never used to serve
-    # a request, or tenant isolation silently stops working.
     migration_database_url: str | None = None
     db_echo: bool = False
 
-    # ── auth ──
-    # Dev-only default, 32+ bytes so PyJWT does not warn. Production must
-    # override it; see `insecure_jwt_secret` below.
     jwt_secret: str = "dev-only-insecure-secret-do-not-ship-0123456789"
     jwt_algorithm: str = "HS256"
     jwt_ttl_minutes: int = 1440
 
-    # ── providers ──
     groq_api_key: str | None = None
-    # Routing is a short classification: small and fast beats large and deep.
     groq_model: str = "openai/gpt-oss-20b"
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-3.5-flash-lite"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5:3b"
 
-    # Almanac reads this. Compass and Manifest deliberately hardcode "groq"
-    # in their own modules — fast structured-output / tool-calling tasks
-    # that were never part of ADR 0004's comparison. That ADR measured
-    # ALMANAC specifically, because it is the agent exposed to
-    # attacker-controlled document text (see ADR 0003); the result was that
-    # qwen2.5:3b obeys a prompt-injection attack and Gemini/Groq do not.
-    # "ollama" as the default keeps local dev free and offline; a deployed
-    # or evaluated instance must override it — see .env.
     answer_provider: Provider = "ollama"
 
-    # ── Threshold (§6.2). Defaults are starting points; the real values come
-    #    from sweeping these against the golden set, not from intuition. ──
     tau_route: float = 0.75
     tau_answer: float = 0.70
 
-    # ── retrieval ──
     embed_model: str = "BAAI/bge-small-en-v1.5"
     embed_dim: int = 384
-    # bge-small is BERT-based and silently truncates at 512 tokens — verified
-    # empirically: appending text past that point leaves the vector byte-identical.
-    # Chunks must stay under it or their tails are embedded as nothing at all.
     embed_max_tokens: int = 512
     chunk_tokens: int = 400
     chunk_overlap: int = 80
     retrieve_top_k: int = 6
 
-    # ── demo access ──
-    # The console offers one-click sign-in so a visitor never has to register.
-    # It can only ever mint tokens for tenants named here, so adding a real
-    # customer to this database does not expose them through the demo door.
     demo_tenant_slugs: list[str] = ["kite", "nimbus"]
 
 
     @field_validator("database_url", "migration_database_url")
     @classmethod
     def _normalise_pg_url(cls, v: str | None) -> str | None:
-        """Accept a connection string copied verbatim from a Neon dashboard.
-
-        Neon hands out a libpq-style URL. asyncpg speaks a different dialect,
-        so rather than making a human remember three edits under time pressure
-        (and debug a confusing driver error when they forget one), the
-        translation happens here:
-
-          postgresql://       -> postgresql+asyncpg://
-          ?sslmode=require    -> ?ssl=require
-          &channel_binding=.. -> dropped (libpq-only; asyncpg rejects it)
-        """
         if not v:
             return v
         parts = urlsplit(v)
@@ -117,7 +62,7 @@ class Settings(BaseSettings):
             if key == "sslmode":
                 keep.append(("ssl", "require" if value in ("require", "verify-full", "verify-ca") else value))
             elif key in ("channel_binding", "options", "application_name"):
-                continue  # libpq-only; asyncpg raises on these
+                continue
             else:
                 keep.append((key, value))
 
@@ -125,7 +70,6 @@ class Settings(BaseSettings):
 
     @property
     def insecure_jwt_secret(self) -> bool:
-        """True when still running on the built-in development secret."""
         return self.jwt_secret.startswith("dev-only-")
 
 

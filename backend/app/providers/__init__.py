@@ -1,11 +1,3 @@
-"""LLM providers behind one interface.
-
-Agents import `get_provider()` and never a vendor SDK. Two reasons: the free
-tiers this project runs on can change their terms at any time, and Sextant
-needs to run the same eval against several models to justify which one each
-agent uses. Both require swapping the backend without touching agent code.
-"""
-
 from __future__ import annotations
 
 from app.config import Provider as ProviderName
@@ -33,7 +25,7 @@ def get_provider(name: ProviderName | None = None) -> LLMProvider:
         from app.providers.gemini import GeminiProvider
 
         provider = GeminiProvider()
-    else:  # pragma: no cover - guarded by the Literal type
+    else:
         raise ProviderError(f"unknown provider {name!r}")
 
     _cache[name] = provider

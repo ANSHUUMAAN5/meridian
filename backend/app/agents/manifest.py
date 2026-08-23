@@ -1,22 +1,3 @@
-"""Manifest — answers account questions by calling order-lookup tools.
-
-Manifest has tools; Almanac does not. Almanac has documents; Manifest does
-not. Neither can do the other's job. That split (ADR 0003) is what keeps a
-compromised document from being able to touch an order: even if Almanac's
-prompt were successfully attacked, it has no tool to call.
-
-Tools here are all READ-only lookups (Threshold treats order_status as a READ
-tier). A future write tool — actually cancelling an order — is a separate,
-explicit addition, not something that falls out of adding more read tools.
-
-Tool calls use each provider's native function-calling (OpenAI-schema tools
-passed through app.providers), not hand-parsed JSON in the response text. An
-earlier version of this file asked the model to emit a JSON object naming a
-tool, which fought the model's own trained behaviour — Groq's gpt-oss tried
-to call a tool the normal way and the API rejected it because no tools were
-declared. Declaring real tools removes the workaround entirely.
-"""
-
 from __future__ import annotations
 
 import json
@@ -160,9 +141,6 @@ async def answer_question(
     )
 
     if not completion.tool_calls:
-        # The model answered without calling a tool. Per the system prompt
-        # this should not happen for an order question — surface it as an
-        # explicit request for more info rather than risk an invented answer.
         return Answer(
             text=completion.text or "I need your order number to look that up — could you share it?",
             tool_calls=[],

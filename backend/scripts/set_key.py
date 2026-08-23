@@ -1,13 +1,3 @@
-"""Put a secret into .env without it appearing anywhere it can be read later.
-
-Run this in YOUR terminal (VS Code: Terminal -> New Terminal). The value is
-typed into a hidden prompt, so it is not echoed to the screen, not written to
-shell history, and not visible to anything reading this session's output.
-
-    python scripts/set_key.py GROQ_API_KEY
-    python scripts/set_key.py GEMINI_API_KEY
-"""
-
 from __future__ import annotations
 
 import re
@@ -17,8 +7,6 @@ from pathlib import Path
 
 ENV = Path(__file__).resolve().parents[1] / ".env"
 
-# Rough shape checks — enough to catch a truncated paste or the wrong key
-# pasted into the wrong slot, which is the common mistake.
 SHAPES = {
     "GROQ_API_KEY": (r"^gsk_[A-Za-z0-9]{40,}$", "should start with gsk_ and be ~56 characters"),
     "GEMINI_API_KEY": (r"^[A-Za-z0-9_.\-]{30,}$", "should be a long alphanumeric string"),

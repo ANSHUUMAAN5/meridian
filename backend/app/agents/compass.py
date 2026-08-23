@@ -1,15 +1,3 @@
-"""Compass — reads the customer's message and decides who handles it.
-
-Compass never sees a document and never sees an order. It classifies intent
-and reports how confident it is, nothing else. That narrowness is deliberate:
-the router is the one thing every request passes through, so it is kept as
-small and cheap as possible, and it holds no capability worth attacking.
-
-Runs on Groq (openai/gpt-oss-20b) — small, fast, structured-output classification,
-not the model doing the answering. Per ADR 0004, routing and answering are
-different jobs with different requirements and can run on different models.
-"""
-
 from __future__ import annotations
 
 import json
@@ -20,7 +8,7 @@ from app.providers import Completion, get_provider
 from app.providers.base import ProviderError
 from app.threshold import RISK_TIERS
 
-INTENTS = tuple(RISK_TIERS)  # single source of truth — see threshold.py
+INTENTS = tuple(RISK_TIERS)
 
 SYSTEM_PROMPT = """You classify customer support messages for {tenant_name}.
 
@@ -75,12 +63,6 @@ class RoutingDecision:
 
 
 def _parse(raw: str) -> tuple[str, float, str]:
-    """Pull the JSON object out of the response.
-
-    Small models occasionally wrap JSON in prose or a code fence despite the
-    instruction not to; this recovers the object rather than failing the
-    whole routing step over formatting.
-    """
     text = raw.strip()
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.M).strip()
@@ -111,7 +93,7 @@ async def classify(message: str, *, tenant_name: str, provider_name: str | None 
     completion = await provider.complete(
         system=SYSTEM_PROMPT.format(tenant_name=tenant_name, intents=", ".join(INTENTS)),
         user=USER_TEMPLATE.format(message=message),
-        max_tokens=1200,  # gpt-oss spends part of this on reasoning before the JSON — see ADR 0004
+        max_tokens=1200,
         temperature=0.0,
     )
     intent, confidence, reasoning = _parse(completion.text)

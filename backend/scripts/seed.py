@@ -1,15 +1,3 @@
-"""Seed a demo tenant with documents and orders.
-
-Idempotent: re-running wipes that tenant's documents and orders and rebuilds
-them, so it is safe to run after editing the seed corpus.
-
-Runs as the restricted application role, not the owner — which means it goes
-through the same RLS path as a real request. If seeding works, the tenant
-context plumbing works.
-
-Usage:  python scripts/seed.py [--tenant kite]
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -39,9 +27,6 @@ TENANTS = {
         "settings": {
             "currency": "INR",
             "brand_tone": "calm, precise, never speculative about medical matters",
-            # Deliberately different domain from Kite (clothing) so the demo
-            # proves the same code answers correctly for two unrelated
-            # businesses — see plan §3.
         },
     },
 }
@@ -53,9 +38,6 @@ KITE_ITEMS = [
     ("Merino Cardigan", "L", 4599), ("Denim Jacket", "M", 5299),
     ("Silk Scarf", "One Size", 1899), ("Chino Shorts", "32", 1999),
 ]
-# (item, pack size, price) — no dosage/quantity language beyond pack size;
-# Manifest reports what a pharmacy order system reports, nothing that reads
-# as medical guidance.
 NIMBUS_ITEMS = [
     ("Metformin 500mg", "30 tablets", 149), ("Insulin Glargine", "1 pen (3ml)", 899),
     ("Atorvastatin 10mg", "30 tablets", 179), ("Levothyroxine 50mcg", "90 tablets", 129),
@@ -67,7 +49,6 @@ ORDER_PREFIXES = {"kite": "KC", "nimbus": "NH"}
 
 
 def _title_from(path: Path) -> str:
-    """'01-returns.md' -> 'Returns' (the heading is inside the file)."""
     stem = path.stem.split("-", 1)[-1]
     return stem.replace("-", " ").title()
 
@@ -93,8 +74,6 @@ async def seed(slug: str) -> None:
 
             tenant_id = str(tenant.id)
 
-            # From here on, behave exactly like a request: bind the session to
-            # this tenant so every write goes through the RLS WITH CHECK.
             await session.execute(
                 text("SELECT set_config('app.current_tenant', :t, true)"), {"t": tenant_id}
             )
@@ -106,7 +85,6 @@ async def seed(slug: str) -> None:
                 session.add(User(tenant_id=tenant_id, email=spec["admin"], role="admin"))
                 print(f"created admin user {spec['admin']}")
 
-            # Rebuild documents from scratch so edits to the corpus take effect.
             await session.execute(delete(Chunk).where(Chunk.tenant_id == tenant_id))
             await session.execute(delete(Document).where(Document.tenant_id == tenant_id))
 
@@ -126,9 +104,8 @@ async def seed(slug: str) -> None:
                 total_chunks += result.chunks
                 print(f"  {result.title:<22} {result.chunks:>2} chunks  {result.tokens:>4} tokens")
 
-            # Orders — the mock commerce backend Manifest will query.
             await session.execute(delete(Order).where(Order.tenant_id == tenant_id))
-            rng = random.Random(4471)  # deterministic so eval cases stay valid
+            rng = random.Random(4471)
             now = datetime.now(UTC)
             items_pool = ITEM_POOLS[slug]
             prefix = ORDER_PREFIXES[slug]
@@ -160,18 +137,6 @@ if __name__ == "__main__":
     ap.add_argument("--tenant", default="kite", choices=sorted(TENANTS))
     asyncio.run(seed(ap.parse_args().tenant))
 
-    # fastembed's ONNX runtime has a native-level cleanup bug on macOS: its
-    # thread pool destructor can throw during Python's normal interpreter
-    # shutdown (libc++abi: recursive_mutex lock failed), well after the
-    # database transaction has already committed. os._exit skips that
-    # teardown entirely rather than let a cosmetic crash-on-exit report this
-    # script as failed when the actual seeding succeeded — verified by
-    # querying the database independently after a run that "crashed".
-    #
-    # os._exit also skips Python's normal buffer flush, which is invisible
-    # interactively (the terminal is line-buffered) but silently swallows
-    # every print() the moment output is piped or redirected — exactly how
-    # CI and `| tail` consume it. Flush explicitly first.
     import os
     import sys
 

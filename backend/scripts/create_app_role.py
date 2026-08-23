@@ -1,24 +1,3 @@
-"""Create the restricted application role. Run once per database.
-
-Why this exists
----------------
-Neon's `neondb_owner` (like most managed-Postgres owner roles) carries the
-BYPASSRLS attribute. A role with BYPASSRLS ignores every row-security policy,
-and ALTER TABLE ... FORCE ROW LEVEL SECURITY does *not* override it. So the
-policies from migration 0001 were structurally present and completely inert.
-
-The fix is the separation real systems use anyway:
-
-  neondb_owner   owns the schema, runs migrations, has BYPASSRLS
-  meridian_app   serves requests, has no BYPASSRLS, is subject to the policies
-
-The application must connect as `meridian_app` and nothing else. If it ever
-connects as the owner, tenant isolation silently disappears — which is exactly
-what the isolation test suite is there to catch.
-
-Usage:  python scripts/create_app_role.py
-"""
-
 import asyncio
 import re
 import secrets
@@ -39,9 +18,6 @@ ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
 async def main() -> int:
     settings = get_settings()
     owner_url = settings.migration_database_url or settings.database_url
-    # Alphanumeric only. Postgres DDL cannot take bind parameters, so this
-    # value is inlined into the statement; restricting the charset to
-    # [A-Za-z0-9] means it can contain no quote, backslash, or delimiter.
     alphabet = string.ascii_letters + string.digits
     password = "".join(secrets.choice(alphabet) for _ in range(40))
     assert password.isalnum()
@@ -62,22 +38,16 @@ async def main() -> int:
             await c.execute(text(f"CREATE ROLE {ROLE} LOGIN PASSWORD '{password}'"))
             print(f"created role {ROLE}")
 
-        # CREATE ROLE already defaults to NOSUPERUSER / NOBYPASSRLS, and this
-        # connection is not a superuser so it may not issue a statement that
-        # even mentions SUPERUSER. The attributes are therefore verified below
-        # rather than asserted here.
 
         await c.execute(text(f"GRANT USAGE ON SCHEMA public TO {ROLE}"))
         await c.execute(text(
             f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {ROLE}"))
         await c.execute(text(f"GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO {ROLE}"))
-        # Tables created by future migrations must be reachable too.
         await c.execute(text(
             f"ALTER DEFAULT PRIVILEGES IN SCHEMA public "
             f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {ROLE}"))
         await c.execute(text(
             f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE ON SEQUENCES TO {ROLE}"))
-        # The app never migrates, so it must not touch the version table.
         await c.execute(text(f"REVOKE ALL ON alembic_version FROM {ROLE}"))
 
         check = (await c.execute(text(
@@ -89,7 +59,6 @@ async def main() -> int:
 
     await engine.dispose()
 
-    # Rewrite .env: owner URL moves to MIGRATION_DATABASE_URL, app URL becomes DATABASE_URL.
     parts = urlsplit(owner_url.replace("postgresql+asyncpg://", "postgresql://"))
     host = parts.netloc.split("@", 1)[1]
     app_url = urlunsplit((parts.scheme, f"{ROLE}:{password}@{host}", parts.path, parts.query, ""))

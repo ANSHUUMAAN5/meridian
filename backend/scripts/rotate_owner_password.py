@@ -1,18 +1,3 @@
-"""Rotate the database owner's password and update .env.
-
-Why this exists rather than "use the Neon dashboard": a role may always change
-its own password, so this needs no console access, no copying a secret through
-a clipboard, and no chance of the new value being pasted somewhere it will be
-logged. The generated password is never printed.
-
-Caveat: Neon's dashboard will still display the password it last generated,
-which will no longer work. .env is the source of truth after running this. If
-you ever reset from the dashboard instead, it overwrites this and you must
-paste the new string into .env yourself.
-
-Usage:  python scripts/rotate_owner_password.py
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -44,8 +29,6 @@ async def main() -> int:
 
     user = urlsplit(current).netloc.split(":", 1)[0]
 
-    # Alphanumeric only: Postgres DDL cannot take bind parameters, so this is
-    # inlined; restricting the charset means it can contain no quote or escape.
     alphabet = string.ascii_letters + string.digits
     new_password = "".join(secrets.choice(alphabet) for _ in range(40))
     assert new_password.isalnum()
@@ -60,7 +43,6 @@ async def main() -> int:
         print(f"rotated password for role {who!r}")
     await engine.dispose()
 
-    # Rewrite .env with the new secret.
     parts = urlsplit(current.replace("postgresql+asyncpg://", "postgresql://"))
     host = parts.netloc.split("@", 1)[1]
     new_url = urlunsplit((parts.scheme, f"{user}:{new_password}@{host}", parts.path, parts.query, ""))
@@ -74,7 +56,6 @@ async def main() -> int:
     )
     print(f"updated .env -> {_mask(new_url)}")
 
-    # Prove the new credential works before declaring success.
     get_settings.cache_clear()
     verify = create_async_engine(
         get_settings().migration_database_url, connect_args={"statement_cache_size": 0}

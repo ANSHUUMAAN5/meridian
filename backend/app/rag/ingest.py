@@ -1,11 +1,3 @@
-"""Turn an uploaded document into searchable chunks.
-
-Runs inside the caller's tenant-scoped session, so every row written inherits
-that tenant and the RLS WITH CHECK clause rejects anything that doesn't. The
-tenant id is therefore never a parameter to these functions — it comes from
-the session, which comes from a signed token.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -35,15 +27,9 @@ async def ingest_document(
     text: str,
     source: str | None = None,
 ) -> IngestResult:
-    """Chunk, embed, and store one document.
-
-    Status moves pending -> chunking -> embedding -> indexed so a partially
-    processed document is distinguishable from a finished one in the UI, and a
-    crash leaves evidence of where it stopped rather than a silent gap.
-    """
     doc = Document(tenant_id=tenant_id, title=title, source=source, status="chunking")
     session.add(doc)
-    await session.flush()  # assigns doc.id without ending the transaction
+    await session.flush()
 
     try:
         pieces = chunk_text(text)
@@ -55,7 +41,6 @@ async def ingest_document(
         doc.status = "embedding"
         await session.flush()
 
-        # Embedding is CPU-bound ONNX work; keep the event loop responsive.
         vectors = await asyncio.to_thread(embed, [p.content for p in pieces])
 
         session.add_all(
@@ -82,7 +67,6 @@ async def ingest_document(
 
 
 async def document_stats(session: AsyncSession, document_id: str) -> tuple[str, int]:
-    """(status, chunk_count) — used by the ingestion progress UI."""
     doc = (await session.execute(select(Document).where(Document.id == document_id))).scalar_one()
     n = len((await session.execute(select(Chunk.id).where(Chunk.document_id == document_id))).all())
     return doc.status, n

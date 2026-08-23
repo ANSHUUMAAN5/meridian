@@ -1,14 +1,3 @@
-"""Split documents into embeddable chunks.
-
-Sizing is done with the embedding model's own tokenizer, not a word-count
-heuristic, because the model truncates hard at 512 tokens and does so silently
-— an oversized chunk is not an error, it is content that simply never gets
-indexed.
-
-Boundaries prefer sentences over arbitrary token offsets so a retrieved chunk
-reads as prose rather than starting mid-clause.
-"""
-
 from __future__ import annotations
 
 import re
@@ -17,8 +6,6 @@ from dataclasses import dataclass
 from app.config import get_settings
 from app.rag.embedder import count_tokens, counting_tokenizer
 
-# Sentence end: ., !, ? or a newline, followed by whitespace. Deliberately
-# simple — a heavier NLP dependency is not worth it for support documents.
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+|\n{2,}")
 
 
@@ -35,12 +22,7 @@ def _split_sentences(text: str) -> list[str]:
 
 
 def _hard_split(sentence: str, budget: int) -> list[str]:
-    """Break a single sentence that exceeds the budget on its own.
-
-    Rare in practice (a table dumped as one line, a run-on paragraph), but it
-    must be handled or that content is lost.
-    """
-    tok = counting_tokenizer()          # must not truncate, or the tail is lost
+    tok = counting_tokenizer()
     ids = tok.encode(sentence, add_special_tokens=False).ids
     out: list[str] = []
     for start in range(0, len(ids), budget):
@@ -67,7 +49,6 @@ def chunk_text(text: str, *, max_tokens: int | None = None, overlap: int | None 
     if not text:
         return []
 
-    # Expand any sentence that is oversized on its own.
     sentences: list[str] = []
     for s in _split_sentences(text):
         sentences.extend([s] if count_tokens(s) <= max_tokens else _hard_split(s, max_tokens))
@@ -82,8 +63,6 @@ def chunk_text(text: str, *, max_tokens: int | None = None, overlap: int | None 
             return
         body = " ".join(current).strip()
         chunks.append(Chunk(ordinal=len(chunks), content=body, tokens=count_tokens(body)))
-        # Carry trailing sentences forward so a fact spanning a boundary
-        # survives in at least one chunk intact.
         carried: list[str] = []
         carried_tokens = 0
         for s in reversed(current):
@@ -102,7 +81,6 @@ def chunk_text(text: str, *, max_tokens: int | None = None, overlap: int | None 
         current.append(sentence)
         current_tokens += t
 
-    # Final flush without re-seeding overlap.
     if current:
         body = " ".join(current).strip()
         if body and (not chunks or chunks[-1].content != body):

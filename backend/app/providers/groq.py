@@ -1,9 +1,3 @@
-"""Groq — fast inference on open models. Used for routing (Compass).
-
-Routing is high-volume and simple: one short classification per customer
-message. Latency matters more than depth, which is what Groq is good at.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -42,8 +36,6 @@ class GroqProvider:
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = "auto"
-        # Free tier has a tokens-per-minute cap. Groq's error tells us exactly
-        # how long to wait, which is normally well under a second.
         for attempt in range(3):
             try:
                 r = await self._client.chat.completions.create(

@@ -1,11 +1,3 @@
-"""Chunker properties.
-
-The tests that matter here are not "does it produce chunks" but "does it lose
-anything" and "can a chunk exceed what the encoder will actually read". Both
-failure modes are silent in production: an oversized chunk is truncated during
-embedding without an error, and a dropped tail simply never becomes searchable.
-"""
-
 import pytest
 
 from app.config import get_settings
@@ -54,19 +46,13 @@ class TestNothingIsLost:
         assert not missing, f"words dropped: {missing[:5]}"
 
     def test_a_document_longer_than_the_encoder_limit_is_fully_covered(self):
-        """The regression this file exists for.
-
-        The embedding tokenizer truncates at 512, so measuring with it capped
-        every document at 512 tokens and the splitter dropped everything past
-        the first chunk. A 3000-token document must produce many chunks.
-        """
         doc = "word " * 3000
         assert count_tokens(doc) > 3000 * 0.9, "counting tokenizer is truncating again"
         chunks = chunk_text(doc)
         assert len(chunks) >= 7, f"expected ~8 chunks for 3000 tokens, got {len(chunks)}"
 
     def test_a_single_oversized_sentence_is_split_not_dropped(self):
-        sentence = "alpha " * 1200  # no terminator anywhere
+        sentence = "alpha " * 1200
         chunks = chunk_text(sentence)
         assert len(chunks) > 1
         assert all(c.tokens <= SETTINGS.embed_max_tokens for c in chunks)

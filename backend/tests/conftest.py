@@ -1,12 +1,3 @@
-"""Shared fixtures for the isolation suite.
-
-The fixture below creates two throwaway tenants with one row in every
-RLS-governed table, rather than depending on Kite & Co / Nimbus Health's
-current data. That makes the suite self-contained: it passes or fails on its
-own seeded rows, on a fresh database or a dirty one, in CI or locally, without
-caring what else has happened to the demo tenants.
-"""
-
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
@@ -35,21 +26,12 @@ TENANT_SETTING = "app.current_tenant"
 
 @pytest_asyncio.fixture(scope="module")
 async def app_sessionmaker() -> async_sessionmaker[AsyncSession]:
-    """A sessionmaker bound to the restricted app role — never the owner.
-
-    Using the owner here would make every test in this file pass regardless
-    of whether row-level security works at all, which is precisely the
-    failure mode this suite exists to catch (see ADR: neondb_owner carries
-    BYPASSRLS, and FORCE ROW LEVEL SECURITY does not override it).
-    """
     settings = get_settings()
     engine = create_async_engine(settings.database_url, connect_args={"statement_cache_size": 0})
     return async_sessionmaker(engine, expire_on_commit=False)
 
 
 async def bind_tenant(session: AsyncSession, tenant_id: str | None) -> None:
-    """Mirrors app.deps.set_tenant — tests need direct control of which
-    tenant (or none) a session is bound to, without going through FastAPI."""
     await session.execute(
         text(f"SELECT set_config('{TENANT_SETTING}', :t, true)"), {"t": tenant_id or ""}
     )
@@ -69,10 +51,6 @@ class SeededTenant:
 
 
 async def _seed_one_tenant(session: AsyncSession, *, name: str, slug: str) -> SeededTenant:
-    """Owner-role-only: tenants has no RLS, so creating the root row needs no
-    tenant context. Every row after it is created WITH that tenant bound,
-    exactly like a real request would, so it goes through the same WITH CHECK
-    path production traffic does."""
     tenant = Tenant(name=name, slug=slug)
     session.add(tenant)
     await session.flush()
@@ -117,10 +95,6 @@ async def _seed_one_tenant(session: AsyncSession, *, name: str, slug: str) -> Se
 
 
 async def _delete_if_exists(session: AsyncSession, slug: str) -> None:
-    """A prior run that crashed before its own teardown leaves this slug
-    behind and collides with the unique constraint on the next run. Clearing
-    it first makes the fixture self-healing rather than requiring a human to
-    notice and clean up manually."""
     tid = (await session.execute(text("SELECT id FROM tenants WHERE slug = :s"), {"s": slug})).scalar()
     if tid is not None:
         await bind_tenant(session, str(tid))
@@ -144,8 +118,6 @@ async def two_tenants(
 
     yield a, b
 
-    # Cascade delete handles every child row via ondelete="CASCADE" on each
-    # table's tenant_id FK — one statement per tenant is enough.
     async with app_sessionmaker() as session:
         async with session.begin():
             await bind_tenant(session, a.id)

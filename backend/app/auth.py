@@ -1,10 +1,3 @@
-"""JWT issue and verify.
-
-The token carries `tid` (tenant id). That claim is the only thing that decides
-which rows a request can see, so it is never taken from a header, query string,
-or request body — only from a signed token.
-"""
-
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -14,7 +7,7 @@ from app.config import get_settings
 
 
 class AuthError(Exception):
-    """Raised when a token is missing, malformed, expired, or wrongly signed."""
+    pass
 
 
 def create_token(*, tenant_id: str, user_id: str, role: str = "agent") -> str:
@@ -44,9 +37,6 @@ def decode_token(token: str) -> dict[str, Any]:
     except jwt.InvalidTokenError as e:
         raise AuthError("invalid token") from e
 
-    # Defence in depth: a token whose tenant claim is not a UUID must never
-    # reach set_config, where it would simply select no rows and look like an
-    # empty tenant rather than an attack.
     tid = claims.get("tid")
     if not isinstance(tid, str) or len(tid) != 36:
         raise AuthError("invalid tenant claim")

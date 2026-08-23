@@ -1,9 +1,3 @@
-"""Alembic environment.
-
-The database URL comes from app settings (i.e. the environment), never from
-alembic.ini — so no connection string with a password is ever in a tracked file.
-"""
-
 import asyncio
 from logging.config import fileConfig
 
@@ -13,13 +7,12 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.config import get_settings
 from app.db.base import Base
-from app.db import models  # noqa: F401  — import registers every table
+from app.db import models
 
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Migrations run as the OWNER role, not the restricted app role.
 _s = get_settings()
 _migration_url = _s.migration_database_url or _s.database_url
 config.set_main_option("sqlalchemy.url", _migration_url)

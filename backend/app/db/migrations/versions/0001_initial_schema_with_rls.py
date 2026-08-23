@@ -1,26 +1,3 @@
-"""initial schema with row-level security
-
-Revision ID: 0001
-Create Date: 2026-08-17
-
-Two details in this migration carry the entire tenant-isolation guarantee, and
-both are easy to get silently wrong:
-
-1. FORCE ROW LEVEL SECURITY
-   Plain ENABLE ROW LEVEL SECURITY does not apply to the table's *owner*.
-   Our application connects as the role that owns these tables, so with only
-   ENABLE the policies would be bypassed on every query and the isolation
-   tests would pass for the wrong reason. FORCE makes them apply to the owner
-   too. Without this line the feature does nothing.
-
-2. current_setting('app.current_tenant', TRUE)
-   The second argument is missing_ok. Without it, any query issued before the
-   session variable is set raises instead of returning nothing. With it, an
-   unset variable yields NULL, the comparison is NULL, and the row is not
-   visible — so the failure mode of forgetting to set the tenant is "see zero
-   rows", never "see everything".
-"""
-
 import pgvector.sqlalchemy
 import sqlalchemy as sa
 from alembic import op
@@ -50,7 +27,6 @@ TENANT_PREDICATE = (
 def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
 
-    # ── tenants — the root table, deliberately not under RLS ──
     op.create_table(
         "tenants",
         sa.Column("id", postgresql.UUID(as_uuid=True), server_default=sa.text("gen_random_uuid()"), nullable=False),
@@ -109,7 +85,6 @@ def upgrade() -> None:
     )
     op.create_index("ix_chunks_tenant_id", "chunks", ["tenant_id"])
     op.create_index("ix_chunks_tenant_document", "chunks", ["tenant_id", "document_id"])
-    # Cosine distance, matching how bge-small vectors are compared at query time.
     op.execute(
         "CREATE INDEX ix_chunks_embedding_hnsw ON chunks "
         "USING hnsw (embedding vector_cosine_ops)"
@@ -212,8 +187,6 @@ def upgrade() -> None:
     op.create_index("ix_orders_tenant_id", "orders", ["tenant_id"])
     op.create_index("ix_orders_external_customer_id", "orders", ["external_customer_id"])
 
-    # ── Row-level security. See the module docstring for why both statements
-    #    are required and what breaks if either is missing. ──
     for table in RLS_TABLES:
         op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
         op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")

@@ -1,11 +1,3 @@
-"""Google Gemini — used for answering (Almanac, Manifest).
-
-Answering is lower-volume than routing and quality-sensitive: the output is
-read by a customer and must stay inside the retrieved documents. Splitting it
-onto a second provider also means neither free tier's rate limit can take the
-whole system down on its own.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -25,10 +17,6 @@ from app.providers.base import Completion, ProviderError, ToolCallRequest
 class GeminiProvider:
     name = "gemini"
 
-    # Free tier allows 5 requests per minute PER MODEL. This is shared across
-    # every GeminiProvider instance in the process (a class variable, not an
-    # instance one), because the limit is Google's, not ours — two instances
-    # calling the same model still share one quota.
     _call_times: deque[float] = deque(maxlen=5)
     _lock = asyncio.Lock()
 
@@ -53,10 +41,6 @@ class GeminiProvider:
 
         gemini_tools = None
         if tools:
-            # Translate OpenAI-shaped tool defs into Gemini's FunctionDeclaration.
-            # AFC (automatic function calling) is explicitly disabled — this
-            # provider hands tool calls back to the caller rather than running
-            # them itself, matching every other provider's contract.
             gemini_tools = [
                 types.Tool(
                     function_declarations=[
@@ -70,9 +54,6 @@ class GeminiProvider:
                 )
             ]
 
-        # Belt and braces: pacing below should prevent 429s, but if one still
-        # arrives (a burst from another process, a shortened window), retry
-        # using the wait time Google reports, up to a few times.
         for attempt in range(3):
             try:
                 r = await asyncio.to_thread(
@@ -135,13 +116,6 @@ class GeminiProvider:
         )
 
     async def _wait_for_quota(self) -> None:
-        """Block until a call would not exceed 5 requests in the last 60s.
-
-        Proactive pacing rather than reactive retrying: waiting a known short
-        time before a call is more reliable than discovering after the fact
-        that the call failed, especially since Google's failure message
-        format is not perfectly stable to parse.
-        """
         async with self._lock:
             now = time.monotonic()
             while self._call_times and now - self._call_times[0] > 60:

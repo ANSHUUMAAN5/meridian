@@ -44,3 +44,11 @@ sextant/results/
 Thumbs.db
 .idea/
 *.swp
+
+# ── Coding-tool internals — not project code ──
+.claude/
+.agents/
+skills-lock.json
+
+# ── Personal learning notes — for me, not for the repo ──
+notes/

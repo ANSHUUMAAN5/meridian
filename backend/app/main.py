@@ -1,5 +1,3 @@
-"""Meridian API."""
-
 from __future__ import annotations
 
 import asyncio
@@ -25,18 +23,6 @@ logger = logging.getLogger("meridian.startup")
 
 
 async def _wait_for_database(attempts: int = 6, base_delay: float = 0.5) -> None:
-    """Confirm the database is reachable before accepting any traffic.
-
-    Observed during development: the very first DNS lookup a fresh process
-    makes for the Neon hostname can fail (OSError/gaierror) even though the
-    network is otherwise fine and every subsequent lookup in the same process
-    succeeds immediately. Retrying scattered across individual request
-    handlers papers over the symptom on whichever endpoint gets hit first;
-    checking once here, before `yield` hands control to the server, means no
-    request ever has to be the one that discovers the database is not ready
-    yet. A real outage still surfaces — this gives up after ~16s and lets
-    startup fail loudly rather than silently serving broken requests.
-    """
     from sqlalchemy import text
 
     last_exc: Exception | None = None
@@ -77,16 +63,8 @@ app.add_middleware(
 )
 
 
-# ─────────────────────────── health ───────────────────────────
-
-
 @app.get("/health", tags=["ops"])
 async def health() -> dict:
-    """Liveness for the keep-warm cron, plus dependency status.
-
-    Always returns 200 so a sleeping host is woken rather than alarmed about;
-    the body says whether anything is actually degraded.
-    """
     from sqlalchemy import text
 
     checks: dict[str, str] = {}
@@ -101,20 +79,12 @@ async def health() -> dict:
     return {"status": "ok", "checks": checks}
 
 
-# ─────────────────────────── demo auth ───────────────────────────
-
-
 class DemoLogin(BaseModel):
     tenant: str = Field(description="Tenant slug, e.g. 'kite'")
 
 
 @app.post("/auth/demo", tags=["auth"])
 async def demo_login(body: DemoLogin) -> dict:
-    """Issue a token for a demo tenant so the console needs no sign-up.
-
-    Restricted to the slugs in settings.demo_tenant_slugs. A real tenant added
-    to this database is therefore not reachable through this endpoint.
-    """
     settings = get_settings()
     if body.tenant not in settings.demo_tenant_slugs:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no such demo tenant")
@@ -126,7 +96,6 @@ async def demo_login(body: DemoLogin) -> dict:
         if tenant is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "demo tenant not seeded")
 
-        # RLS hides users, so read them as part of the same tenant context.
         from sqlalchemy import text
 
         await session.execute(
@@ -148,9 +117,6 @@ async def demo_login(body: DemoLogin) -> dict:
         "token_type": "bearer",
         "tenant": {"id": str(tenant.id), "name": tenant.name, "slug": tenant.slug},
     }
-
-
-# ─────────────────────────── chat ───────────────────────────
 
 
 class ChatRequest(BaseModel):
@@ -195,8 +161,6 @@ async def chat(
             )
         ).scalar_one_or_none()
         if conversation is None:
-            # RLS makes another tenant's conversation indistinguishable from a
-            # nonexistent one, which is the correct thing to leak: nothing.
             raise HTTPException(status.HTTP_404_NOT_FOUND, "conversation not found")
     else:
         conversation = Conversation(
@@ -212,7 +176,7 @@ async def chat(
         content=body.message,
     )
     session.add(customer_msg)
-    await session.flush()  # assigns customer_msg.id so Trace can reference it
+    await session.flush()
 
     result = await handle_message(
         session,

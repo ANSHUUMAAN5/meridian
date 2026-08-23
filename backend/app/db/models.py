@@ -1,17 +1,3 @@
-"""Database models.
-
-Two conventions hold across this file:
-
-1. Every table except `tenants` carries a non-null `tenant_id`. Row-level
-   security policies (created in the Alembic migration, not here) key off it.
-   SQLAlchemy has no concept of RLS — the policies are DDL, so they live in
-   the migration and the models stay unaware of them. That is deliberate: the
-   guarantee should not depend on the ORM doing anything.
-
-2. `metadata` is reserved by SQLAlchemy's declarative base, so JSON columns of
-   that name are mapped as `meta` in Python and "metadata" in Postgres.
-"""
-
 from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
@@ -58,24 +44,18 @@ def _created() -> Mapped[datetime]:
     )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-
-
 class Tenant(Base):
-    """One customer company. The only table without RLS — it is the root."""
 
     __tablename__ = "tenants"
 
     id: Mapped[str] = _pk()
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     slug: Mapped[str] = mapped_column(String(60), nullable=False, unique=True)
-    # Per-tenant overrides: thresholds, brand tone, hard escalation rules.
     settings: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     created_at: Mapped[datetime] = _created()
 
 
 class User(Base):
-    """A human on the tenant's support team — not an end customer."""
 
     __tablename__ = "users"
 
@@ -92,7 +72,6 @@ class User(Base):
 
 
 class Document(Base):
-    """An uploaded support document, before chunking."""
 
     __tablename__ = "documents"
 
@@ -112,11 +91,6 @@ class Document(Base):
 
 
 class Chunk(Base):
-    """A slice of a document plus its embedding.
-
-    Retrieval reads this table through RLS, so a vector search physically
-    cannot return another tenant's chunks even with no WHERE clause.
-    """
 
     __tablename__ = "chunks"
 
@@ -125,7 +99,7 @@ class Chunk(Base):
     document_id: Mapped[str] = mapped_column(
         UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
     )
-    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)  # position in the doc
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     embedding: Mapped[list[float]] = mapped_column(Vector(EMBED_DIM), nullable=False)
     meta: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, server_default="{}")
@@ -141,7 +115,6 @@ class Conversation(Base):
 
     id: Mapped[str] = _pk()
     tenant_id: Mapped[str] = _tenant_fk()
-    # The tenant's own customer identifier — Meridian never owns end users.
     external_customer_id: Mapped[str | None] = mapped_column(String(200), index=True)
     created_at: Mapped[datetime] = _created()
 
@@ -165,11 +138,6 @@ class Message(Base):
 
 
 class AgentTrace(Base):
-    """One row per agent step. This table is the Trace product surface.
-
-    Cost is stored per step rather than derived later, because the model behind
-    a step can change between runs and the historical cost must not move.
-    """
 
     __tablename__ = "agent_traces"
 
@@ -187,7 +155,6 @@ class AgentTrace(Base):
 
     input: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     output: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
-    # Null for steps that make no judgement (a tool call has no confidence).
     confidence: Mapped[float | None] = mapped_column(Float)
 
     latency_ms: Mapped[int | None] = mapped_column(Integer)
@@ -206,7 +173,6 @@ class AgentTrace(Base):
 
 
 class Escalation(Base):
-    """A case handed to a human. Written only by Beacon."""
 
     __tablename__ = "escalations"
 
@@ -215,11 +181,6 @@ class Escalation(Base):
     conversation_id: Mapped[str] = mapped_column(
         UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False
     )
-    # Full-sentence explanation from Threshold, e.g. "write-tier action
-    # (refund_request) requires explicit confirmation" — this is what a
-    # human in Relay actually reads, so it is not a short code and should
-    # not be capped to one. (Originally String(60); widened in migration
-    # 0002 after a real reason string was longer than that.)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     confidence: Mapped[float | None] = mapped_column(Float)
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="open")
@@ -237,11 +198,6 @@ class Escalation(Base):
 
 
 class Order(Base):
-    """Stands in for the tenant's real commerce backend.
-
-    Manifest reaches this through a tool interface, never directly, so swapping
-    it for a real Shopify/internal API is an adapter rather than a rewrite.
-    """
 
     __tablename__ = "orders"
 
@@ -260,7 +216,6 @@ class Order(Base):
     )
 
 
-# Tables that get row-level security. `tenants` is deliberately absent.
 RLS_TABLES: tuple[str, ...] = (
     "users",
     "documents",

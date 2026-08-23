@@ -41,7 +41,14 @@ Choose exactly one intent from this list:
   questions, side effects for their specific situation, or anything else
   that calls for a pharmacist's or doctor's judgement rather than a policy
   fact. A question about WHERE an order is or HOW LONG delivery takes is not
-  medical, even if it mentions a medicine by name.
+  medical, even if it mentions a medicine by name. Questions about
+  PRESCRIPTION POLICY — how long a prescription stays valid, whether a
+  medicine requires one, refill limits, dispensing rules, insurance — are
+  policy_question, not medical_question, even though they mention
+  medicines: they ask what the PHARMACY's rule is, not what the CUSTOMER
+  should personally do. Example: "can I get insulin without a prescription"
+  asks whether the pharmacy's dispensing rule requires one — policy_question,
+  not medical_question, because it names no personal health detail to judge.
 
 Respond with ONLY a JSON object, no other text:
 {{"intent": "<one of the intents above>", "confidence": <0.0-1.0>, "reasoning": "<one short sentence>"}}

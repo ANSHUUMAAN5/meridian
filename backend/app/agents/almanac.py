@@ -133,12 +133,16 @@ async def answer_question(
     *,
     tenant_name: str,
     top_k: int | None = None,
+    provider_name: str | None = None,
 ) -> Answer:
+    """`provider_name` overrides the configured backend, so the evaluation
+    harness can run the identical prompt across models and attribute any
+    difference to the model rather than to a changed prompt."""
     chunks = await search(session, question, top_k=top_k)
 
     if not chunks:
         # No corpus, or nothing similar enough to be worth showing the model.
-        provider = get_provider()
+        provider = get_provider(provider_name)
         return Answer(
             text="I don't have any reference material to answer that from. "
             "Let me connect you with someone who can help.",
@@ -147,11 +151,18 @@ async def answer_question(
             completion=Completion(text="", model=provider.model, latency_ms=0),
         )
 
-    provider = get_provider()
+    provider = get_provider(provider_name)
     completion = await provider.complete(
         system=SYSTEM_PROMPT.format(tenant_name=tenant_name),
         user=USER_TEMPLATE.format(documents=_render(chunks), question=question),
-        max_tokens=400,
+        # Reasoning models (gpt-oss on Groq) spend part of this budget on an
+        # internal reasoning trace before writing the visible answer. 400 was
+        # sized for non-reasoning models and left gpt-oss cut off mid-thought
+        # (finish_reason="length", empty content) on anything adversarial —
+        # measured directly: 400 -> truncated, 2000 -> completes with room to
+        # spare. Generous headroom costs nothing extra on providers that don't
+        # have this concept; the answer itself stays a few sentences either way.
+        max_tokens=1600,
     )
 
     return Answer(

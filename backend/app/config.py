@@ -38,7 +38,10 @@ class Settings(BaseSettings):
 
     # ── providers ──
     groq_api_key: str | None = None
+    # Routing is a short classification: small and fast beats large and deep.
+    groq_model: str = "openai/gpt-oss-20b"
     gemini_api_key: str | None = None
+    gemini_model: str = "gemini-3.5-flash-lite"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5:3b"
 

@@ -40,10 +40,36 @@ class GeminiProvider:
         self._client = genai.Client(api_key=s.gemini_api_key)
 
     async def complete(
-        self, *, system: str, user: str, max_tokens: int = 1024, temperature: float = 0.0
+        self,
+        *,
+        system: str,
+        user: str,
+        max_tokens: int = 1024,
+        temperature: float = 0.0,
+        tools: list[dict[str, Any]] | None = None,
     ) -> Completion:
         await self._wait_for_quota()
         started = time.perf_counter()
+
+        gemini_tools = None
+        if tools:
+            # Translate OpenAI-shaped tool defs into Gemini's FunctionDeclaration.
+            # AFC (automatic function calling) is explicitly disabled — this
+            # provider hands tool calls back to the caller rather than running
+            # them itself, matching every other provider's contract.
+            gemini_tools = [
+                types.Tool(
+                    function_declarations=[
+                        types.FunctionDeclaration(
+                            name=t["function"]["name"],
+                            description=t["function"].get("description", ""),
+                            parameters=t["function"].get("parameters"),
+                        )
+                        for t in tools
+                    ]
+                )
+            ]
+
         # Belt and braces: pacing below should prevent 429s, but if one still
         # arrives (a burst from another process, a shortened window), retry
         # using the wait time Google reports, up to a few times.

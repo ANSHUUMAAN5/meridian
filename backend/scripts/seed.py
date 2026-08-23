@@ -33,6 +33,17 @@ TENANTS = {
         "admin": "priya@kiteandco.in",
         "settings": {"currency": "INR", "brand_tone": "warm, plain-spoken, never pushy"},
     },
+    "nimbus": {
+        "name": "Nimbus Health",
+        "admin": "anjali@nimbushealth.in",
+        "settings": {
+            "currency": "INR",
+            "brand_tone": "calm, precise, never speculative about medical matters",
+            # Deliberately different domain from Kite (clothing) so the demo
+            # proves the same code answers correctly for two unrelated
+            # businesses — see plan §3.
+        },
+    },
 }
 
 ORDER_STATUSES = ["confirmed", "processing", "dispatched", "out_for_delivery", "delivered", "cancelled"]
@@ -42,6 +53,17 @@ KITE_ITEMS = [
     ("Merino Cardigan", "L", 4599), ("Denim Jacket", "M", 5299),
     ("Silk Scarf", "One Size", 1899), ("Chino Shorts", "32", 1999),
 ]
+# (item, pack size, price) — no dosage/quantity language beyond pack size;
+# Manifest reports what a pharmacy order system reports, nothing that reads
+# as medical guidance.
+NIMBUS_ITEMS = [
+    ("Metformin 500mg", "30 tablets", 149), ("Insulin Glargine", "1 pen (3ml)", 899),
+    ("Atorvastatin 10mg", "30 tablets", 179), ("Levothyroxine 50mcg", "90 tablets", 129),
+    ("Amoxicillin 250mg", "15 capsules", 89), ("Cetirizine 10mg (OTC)", "10 tablets", 35),
+    ("Multivitamin", "60 tablets", 249), ("Losartan 50mg", "30 tablets", 159),
+]
+ITEM_POOLS = {"kite": KITE_ITEMS, "nimbus": NIMBUS_ITEMS}
+ORDER_PREFIXES = {"kite": "KC", "nimbus": "NH"}
 
 
 def _title_from(path: Path) -> str:
@@ -108,15 +130,17 @@ async def seed(slug: str) -> None:
             await session.execute(delete(Order).where(Order.tenant_id == tenant_id))
             rng = random.Random(4471)  # deterministic so eval cases stay valid
             now = datetime.now(UTC)
+            items_pool = ITEM_POOLS[slug]
+            prefix = ORDER_PREFIXES[slug]
             for i in range(24):
                 items = [
-                    {"name": n, "size": s, "price": p, "qty": 1}
-                    for n, s, p in rng.sample(KITE_ITEMS, rng.randint(1, 3))
+                    {"name": n, "size": size, "price": p, "qty": 1}
+                    for n, size, p in rng.sample(items_pool, rng.randint(1, 3))
                 ]
                 session.add(
                     Order(
                         tenant_id=tenant_id,
-                        order_number=f"KC{4400 + i}",
+                        order_number=f"{prefix}{4400 + i}",
                         external_customer_id=f"cust_{rng.randint(1000, 1099)}",
                         status=rng.choice(ORDER_STATUSES),
                         items=items,
@@ -135,3 +159,22 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--tenant", default="kite", choices=sorted(TENANTS))
     asyncio.run(seed(ap.parse_args().tenant))
+
+    # fastembed's ONNX runtime has a native-level cleanup bug on macOS: its
+    # thread pool destructor can throw during Python's normal interpreter
+    # shutdown (libc++abi: recursive_mutex lock failed), well after the
+    # database transaction has already committed. os._exit skips that
+    # teardown entirely rather than let a cosmetic crash-on-exit report this
+    # script as failed when the actual seeding succeeded — verified by
+    # querying the database independently after a run that "crashed".
+    #
+    # os._exit also skips Python's normal buffer flush, which is invisible
+    # interactively (the terminal is line-buffered) but silently swallows
+    # every print() the moment output is piped or redirected — exactly how
+    # CI and `| tail` consume it. Flush explicitly first.
+    import os
+    import sys
+
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)

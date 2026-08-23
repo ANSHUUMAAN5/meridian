@@ -28,7 +28,11 @@ from app.config import get_settings
 
 class RiskTier(str, Enum):
     READ = "read"    # answering a question, looking something up — reversible
-    WRITE = "write"   # cancelling, refunding, changing an address — not reversible
+    WRITE = "write"  # cancelling, refunding, changing an address — not reversible
+    HARD = "hard"    # never answered autonomously, at any confidence — a
+                      # policy decision, not a capability limit. A model that
+                      # is 99% sure about a drug dosage is still not allowed
+                      # to say so; the number was never the risk.
 
 
 class Verdict(str, Enum):
@@ -48,6 +52,8 @@ RISK_TIERS: dict[str, RiskTier] = {
     "change_address": RiskTier.WRITE,
     "out_of_scope": RiskTier.READ,   # answering "I can't help with that" is safe
     "ambiguous": RiskTier.READ,      # nothing to act on yet
+    "medical_question": RiskTier.HARD,  # dosage, interactions, "should I take X" —
+                                         # always a human/pharmacist, every tenant
 }
 
 
@@ -78,6 +84,18 @@ def evaluate(
     settings = get_settings()
     threshold = settings.tau_route if is_routing_step else settings.tau_answer
     tier = tier_for(intent)
+
+    if tier is RiskTier.HARD:
+        # Checked before confidence, deliberately. A HARD-tier intent escalates
+        # whether Compass reports 0.51 or 0.99 — the confidence question
+        # ("is the model probably right") is not the question that matters here.
+        return Gate(
+            verdict=Verdict.ESCALATE,
+            reason=f"{intent} is always reviewed by a person, regardless of confidence",
+            tier=tier,
+            confidence=confidence,
+            threshold=threshold,
+        )
 
     if confidence < threshold:
         return Gate(

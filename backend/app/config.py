@@ -6,6 +6,7 @@ them without editing source.
 """
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -16,8 +17,19 @@ Provider = Literal["groq", "gemini", "ollama"]
 
 
 class Settings(BaseSettings):
+    # An env_file of plain ".env" resolves against the CURRENT WORKING
+    # DIRECTORY of whoever runs the process — not against this file's own
+    # location. A script invoked from the repo root instead of backend/
+    # (e.g. sextant/run.py, called as `python sextant/run.py` from
+    # ~/Meridian) would silently find no .env file and fall back to the
+    # hardcoded localhost default below, rather than erroring — exactly the
+    # "fails open" shape this project avoids everywhere else. Anchoring to
+    # this file's own directory makes .env load correctly no matter where
+    # the process was launched from.
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=Path(__file__).resolve().parents[1] / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     # ── database ──
@@ -45,7 +57,14 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5:3b"
 
-    compass_provider: Provider = "ollama"
+    # Almanac reads this. Compass and Manifest deliberately hardcode "groq"
+    # in their own modules — fast structured-output / tool-calling tasks
+    # that were never part of ADR 0004's comparison. That ADR measured
+    # ALMANAC specifically, because it is the agent exposed to
+    # attacker-controlled document text (see ADR 0003); the result was that
+    # qwen2.5:3b obeys a prompt-injection attack and Gemini/Groq do not.
+    # "ollama" as the default keeps local dev free and offline; a deployed
+    # or evaluated instance must override it — see .env.
     answer_provider: Provider = "ollama"
 
     # ── Threshold (§6.2). Defaults are starting points; the real values come

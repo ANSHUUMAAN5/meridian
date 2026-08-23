@@ -51,4 +51,11 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# All async fixtures/tests in one module share a single event loop. Without
+# this, a session-scoped engine fixture and pytest-asyncio's default
+# function-scoped loop disagree about which loop owns each asyncpg
+# connection, producing "another operation is in progress" — not a real bug,
+# a test-plumbing mismatch. See tests/conftest.py.
+asyncio_default_fixture_loop_scope = "module"
+asyncio_default_test_loop_scope = "module"
 testpaths = ["tests"]

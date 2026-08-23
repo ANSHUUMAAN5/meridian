@@ -36,6 +36,12 @@ Choose exactly one intent from this list:
 - out_of_scope: about something this business does not do or sell.
 - ambiguous: too vague, incomplete, or unclear to classify confidently — this
   includes hostile or emotional messages with no clear request attached.
+- medical_question: asking for medical advice — whether to take a medicine,
+  how much to take, whether two medicines are safe to combine, dosage
+  questions, side effects for their specific situation, or anything else
+  that calls for a pharmacist's or doctor's judgement rather than a policy
+  fact. A question about WHERE an order is or HOW LONG delivery takes is not
+  medical, even if it mentions a medicine by name.
 
 Respond with ONLY a JSON object, no other text:
 {{"intent": "<one of the intents above>", "confidence": <0.0-1.0>, "reasoning": "<one short sentence>"}}

@@ -10,8 +10,10 @@ import time
 
 import httpx
 
+from typing import Any
+
 from app.config import get_settings
-from app.providers.base import Completion, ProviderError
+from app.providers.base import Completion, ProviderError, ToolCallRequest
 
 
 class OllamaProvider:
@@ -23,9 +25,15 @@ class OllamaProvider:
         self.model = s.ollama_model
 
     async def complete(
-        self, *, system: str, user: str, max_tokens: int = 1024, temperature: float = 0.0
+        self,
+        *,
+        system: str,
+        user: str,
+        max_tokens: int = 1024,
+        temperature: float = 0.0,
+        tools: list[dict[str, Any]] | None = None,
     ) -> Completion:
-        payload = {
+        payload: dict[str, Any] = {
             "model": self.model,
             "messages": [
                 {"role": "system", "content": system},
@@ -34,6 +42,8 @@ class OllamaProvider:
             "stream": False,
             "options": {"temperature": temperature, "num_predict": max_tokens},
         }
+        if tools:
+            payload["tools"] = tools
         started = time.perf_counter()
         try:
             async with httpx.AsyncClient(timeout=180.0) as client:
@@ -44,8 +54,19 @@ class OllamaProvider:
             raise ProviderError(f"ollama request failed: {e}") from e
 
         elapsed = int((time.perf_counter() - started) * 1000)
-        text = (data.get("message") or {}).get("content", "").strip()
-        if not text:
+        message = data.get("message") or {}
+        raw_calls = message.get("tool_calls") or []
+        tool_calls = [
+            ToolCallRequest(
+                id=str(i),
+                name=tc["function"]["name"],
+                arguments=tc["function"].get("arguments", {}),
+            )
+            for i, tc in enumerate(raw_calls)
+        ]
+
+        text = (message.get("content") or "").strip()
+        if not text and not tool_calls:
             raise ProviderError("ollama returned an empty completion")
 
         return Completion(
@@ -54,6 +75,7 @@ class OllamaProvider:
             latency_ms=elapsed,
             input_tokens=data.get("prompt_eval_count"),
             output_tokens=data.get("eval_count"),
+            tool_calls=tool_calls,
         )
 
     async def healthy(self) -> bool:

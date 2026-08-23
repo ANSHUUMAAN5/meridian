@@ -215,7 +215,12 @@ class Escalation(Base):
     conversation_id: Mapped[str] = mapped_column(
         UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False
     )
-    reason: Mapped[str] = mapped_column(String(60), nullable=False)
+    # Full-sentence explanation from Threshold, e.g. "write-tier action
+    # (refund_request) requires explicit confirmation" — this is what a
+    # human in Relay actually reads, so it is not a short code and should
+    # not be capped to one. (Originally String(60); widened in migration
+    # 0002 after a real reason string was longer than that.)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
     confidence: Mapped[float | None] = mapped_column(Float)
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="open")
     assigned_to: Mapped[str | None] = mapped_column(

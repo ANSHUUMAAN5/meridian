@@ -7,12 +7,15 @@ message. Latency matters more than depth, which is what Groq is good at.
 from __future__ import annotations
 
 import asyncio
+import json
 import time
+
+from typing import Any
 
 from groq import APIError, AsyncGroq, RateLimitError
 
 from app.config import get_settings
-from app.providers.base import Completion, ProviderError
+from app.providers.base import Completion, ProviderError, ToolCallRequest
 
 
 class GroqProvider:
@@ -26,9 +29,19 @@ class GroqProvider:
         self._client = AsyncGroq(api_key=s.groq_api_key)
 
     async def complete(
-        self, *, system: str, user: str, max_tokens: int = 1024, temperature: float = 0.0
+        self,
+        *,
+        system: str,
+        user: str,
+        max_tokens: int = 1024,
+        temperature: float = 0.0,
+        tools: list[dict[str, Any]] | None = None,
     ) -> Completion:
         started = time.perf_counter()
+        kwargs: dict[str, Any] = {}
+        if tools:
+            kwargs["tools"] = tools
+            kwargs["tool_choice"] = "auto"
         # Free tier has a tokens-per-minute cap. Groq's error tells us exactly
         # how long to wait, which is normally well under a second.
         for attempt in range(3):
@@ -41,6 +54,7 @@ class GroqProvider:
                     ],
                     max_completion_tokens=max_tokens,
                     temperature=temperature,
+                    **kwargs,
                 )
                 break
             except RateLimitError as e:
@@ -51,8 +65,20 @@ class GroqProvider:
                 raise ProviderError(f"groq request failed: {e}") from e
 
         elapsed = int((time.perf_counter() - started) * 1000)
-        text = (r.choices[0].message.content or "").strip()
-        if not text:
+        message = r.choices[0].message
+        raw_calls = message.tool_calls or []
+
+        tool_calls = [
+            ToolCallRequest(
+                id=tc.id,
+                name=tc.function.name,
+                arguments=json.loads(tc.function.arguments or "{}"),
+            )
+            for tc in raw_calls
+        ]
+
+        text = (message.content or "").strip()
+        if not text and not tool_calls:
             raise ProviderError("groq returned an empty completion")
 
         usage = r.usage
@@ -62,6 +88,7 @@ class GroqProvider:
             latency_ms=elapsed,
             input_tokens=getattr(usage, "prompt_tokens", None),
             output_tokens=getattr(usage, "completion_tokens", None),
+            tool_calls=tool_calls,
         )
 
     async def healthy(self) -> bool:

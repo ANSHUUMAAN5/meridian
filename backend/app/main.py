@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -10,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.almanac import answer_question
+from app.orchestrator import handle_message
 from app.auth import create_token
 from app.config import get_settings
 from app.db.base import get_engine, get_sessionmaker
@@ -19,8 +21,42 @@ from app.deps import Principal, current_principal, tenant_session
 from app.providers import get_provider
 
 
+logger = logging.getLogger("meridian.startup")
+
+
+async def _wait_for_database(attempts: int = 6, base_delay: float = 0.5) -> None:
+    """Confirm the database is reachable before accepting any traffic.
+
+    Observed during development: the very first DNS lookup a fresh process
+    makes for the Neon hostname can fail (OSError/gaierror) even though the
+    network is otherwise fine and every subsequent lookup in the same process
+    succeeds immediately. Retrying scattered across individual request
+    handlers papers over the symptom on whichever endpoint gets hit first;
+    checking once here, before `yield` hands control to the server, means no
+    request ever has to be the one that discovers the database is not ready
+    yet. A real outage still surfaces — this gives up after ~16s and lets
+    startup fail loudly rather than silently serving broken requests.
+    """
+    from sqlalchemy import text
+
+    last_exc: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            async with get_sessionmaker()() as session:
+                await session.execute(text("select 1"))
+            if attempt:
+                logger.info("database reachable after %d retr%s", attempt, "y" if attempt == 1 else "ies")
+            return
+        except OSError as e:
+            last_exc = e
+            if attempt < attempts - 1:
+                await asyncio.sleep(base_delay * (2**attempt))
+    raise RuntimeError(f"database unreachable after {attempts} attempts") from last_exc
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await _wait_for_database()
     yield
     await get_engine().dispose()
 
@@ -130,20 +166,16 @@ class CitationOut(BaseModel):
     similarity: float
 
 
-class SourceOut(BaseModel):
-    document_title: str
-    similarity: float
-    excerpt: str
-
-
 class ChatResponse(BaseModel):
     conversation_id: str
     answer: str
-    grounded: bool
-    citations: list[CitationOut]
-    sources: list[SourceOut]
-    model: str
-    latency_ms: int
+    intent: str
+    confidence: float
+    agent: str
+    escalated: bool
+    escalation_id: str | None = None
+    grounded: bool | None = None
+    citations: list[CitationOut] = []
 
 
 @app.post("/chat", response_model=ChatResponse, tags=["chat"])
@@ -173,29 +205,42 @@ async def chat(
         session.add(conversation)
         await session.flush()
 
-    session.add(
-        Message(
-            tenant_id=principal.tenant_id,
-            conversation_id=conversation.id,
-            role="customer",
-            content=body.message,
-        )
+    customer_msg = Message(
+        tenant_id=principal.tenant_id,
+        conversation_id=conversation.id,
+        role="customer",
+        content=body.message,
     )
+    session.add(customer_msg)
+    await session.flush()  # assigns customer_msg.id so Trace can reference it
 
-    result = await answer_question(session, body.message, tenant_name=tenant.name)
+    result = await handle_message(
+        session,
+        tenant_id=principal.tenant_id,
+        tenant_name=tenant.name,
+        conversation_id=str(conversation.id),
+        message_id=str(customer_msg.id),
+        customer_message=body.message,
+        customer_id=body.customer_id,
+    )
 
     session.add(
         Message(
             tenant_id=principal.tenant_id,
             conversation_id=conversation.id,
             role="assistant",
-            content=result.text,
+            content=result.answer,
         )
     )
 
     return ChatResponse(
         conversation_id=str(conversation.id),
-        answer=result.text,
+        answer=result.answer,
+        intent=result.intent,
+        confidence=result.confidence,
+        agent=result.agent,
+        escalated=result.escalated,
+        escalation_id=result.escalation_id,
         grounded=result.grounded,
         citations=[
             CitationOut(
@@ -206,14 +251,4 @@ async def chat(
             )
             for c in result.citations
         ],
-        sources=[
-            SourceOut(
-                document_title=r.document_title,
-                similarity=round(r.similarity, 4),
-                excerpt=r.content[:200],
-            )
-            for r in result.retrieved
-        ],
-        model=result.completion.model,
-        latency_ms=result.completion.latency_ms,
     )

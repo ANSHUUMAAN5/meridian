@@ -16,8 +16,10 @@ from collections import deque
 from google import genai
 from google.genai import types
 
+from typing import Any
+
 from app.config import get_settings
-from app.providers.base import Completion, ProviderError
+from app.providers.base import Completion, ProviderError, ToolCallRequest
 
 
 class GeminiProvider:
@@ -55,6 +57,12 @@ class GeminiProvider:
                         system_instruction=system,
                         max_output_tokens=max_tokens,
                         temperature=temperature,
+                        tools=gemini_tools,
+                        automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                            disable=True
+                        )
+                        if gemini_tools
+                        else None,
                     ),
                 )
                 break
@@ -74,8 +82,20 @@ class GeminiProvider:
             raise ProviderError("gemini rate-limited repeatedly")
 
         elapsed = int((time.perf_counter() - started) * 1000)
-        text = (r.text or "").strip()
-        if not text:
+
+        tool_calls: list[ToolCallRequest] = []
+        parts = []
+        if r.candidates:
+            parts = r.candidates[0].content.parts or []
+        for i, part in enumerate(parts):
+            fc = getattr(part, "function_call", None)
+            if fc is not None:
+                tool_calls.append(
+                    ToolCallRequest(id=f"call_{i}", name=fc.name, arguments=dict(fc.args or {}))
+                )
+
+        text = (r.text or "").strip() if not tool_calls else ""
+        if not text and not tool_calls:
             raise ProviderError("gemini returned an empty completion")
 
         usage = getattr(r, "usage_metadata", None)
@@ -85,6 +105,7 @@ class GeminiProvider:
             latency_ms=elapsed,
             input_tokens=getattr(usage, "prompt_token_count", None),
             output_tokens=getattr(usage, "candidates_token_count", None),
+            tool_calls=tool_calls,
         )
 
     async def _wait_for_quota(self) -> None:

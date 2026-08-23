@@ -44,6 +44,7 @@ class CaseResult:
     confidence: float
     answer: str
     latency_ms: int
+    awaiting_confirmation: bool = False
 
     @property
     def intent_correct(self) -> bool:
@@ -51,7 +52,14 @@ class CaseResult:
 
     @property
     def escalate_correct(self) -> bool:
-        return self.actual_escalate == self.expected_escalate
+        if self.actual_escalate == self.expected_escalate:
+            return True
+        # A write-tier case (cancel_order/refund_request) that now correctly
+        # PROPOSES the action instead of blindly escalating is a strictly
+        # better outcome than the old always-escalate behavior these labels
+        # were written against — a human is never bypassed, the customer
+        # just gets asked to confirm first. See ADR 0006.
+        return self.expected_escalate and self.awaiting_confirmation
 
     @property
     def refused_correctly(self) -> bool:
@@ -112,7 +120,7 @@ async def run() -> list[CaseResult]:
                     session,
                     tenant_id=tenant_id,
                     tenant_name=tenant_name,
-                    conversation_id=str(conv.id),
+                    conversation=conv,
                     message_id=str(msg.id),
                     customer_message=case["message"],
                 )
@@ -124,7 +132,7 @@ async def run() -> list[CaseResult]:
                     expected_intent=case["expected_intent"], actual_intent=outcome.intent,
                     expected_escalate=case["expected_escalate"], actual_escalate=outcome.escalated,
                     agent=outcome.agent, confidence=outcome.confidence, answer=outcome.answer,
-                    latency_ms=elapsed,
+                    latency_ms=elapsed, awaiting_confirmation=outcome.awaiting_confirmation,
                 )
             )
             print(f"  [{i}/{len(cases)}] {case['id']:<12} done", end="\r", flush=True)

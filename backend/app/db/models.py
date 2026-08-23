@@ -116,6 +116,8 @@ class Conversation(Base):
     id: Mapped[str] = _pk()
     tenant_id: Mapped[str] = _tenant_fk()
     external_customer_id: Mapped[str | None] = mapped_column(String(200), index=True)
+    pending_action: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    pending_action_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = _created()
 
 

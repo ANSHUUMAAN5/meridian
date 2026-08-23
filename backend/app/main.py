@@ -142,6 +142,7 @@ class ChatResponse(BaseModel):
     escalation_id: str | None = None
     grounded: bool | None = None
     citations: list[CitationOut] = []
+    awaiting_confirmation: bool = False
 
 
 @app.post("/chat", response_model=ChatResponse, tags=["chat"])
@@ -182,7 +183,7 @@ async def chat(
         session,
         tenant_id=principal.tenant_id,
         tenant_name=tenant.name,
-        conversation_id=str(conversation.id),
+        conversation=conversation,
         message_id=str(customer_msg.id),
         customer_message=body.message,
         customer_id=body.customer_id,
@@ -206,6 +207,7 @@ async def chat(
         escalated=result.escalated,
         escalation_id=result.escalation_id,
         grounded=result.grounded,
+        awaiting_confirmation=result.awaiting_confirmation,
         citations=[
             CitationOut(
                 index=c.index,

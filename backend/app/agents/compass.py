@@ -38,8 +38,13 @@ Choose exactly one intent from this list:
   asks whether the pharmacy's dispensing rule requires one — policy_question,
   not medical_question, because it names no personal health detail to judge.
 
+Also report:
+- sentiment: "calm", "frustrated", or "angry" — your read of the customer's tone.
+- urgency: "normal" or "high" — high only if the message itself signals genuine time pressure (e.g. "I need this today"), not just intensity of wording.
+- order_number: an order number the message plainly contains (e.g. "KC4471"), or null if none is mentioned. This is a hint for a downstream step to verify, not a fact to trust — extract only what is literally written.
+
 Respond with ONLY a JSON object, no other text:
-{{"intent": "<one of the intents above>", "confidence": <0.0-1.0>, "reasoning": "<one short sentence>"}}
+{{"intent": "<one of the intents above>", "confidence": <0.0-1.0>, "reasoning": "<one short sentence>", "sentiment": "<calm|frustrated|angry>", "urgency": "<normal|high>", "order_number": "<order number or null>"}}
 
 Confidence reflects how clearly the message matches the intent — not how
 important or urgent it sounds. A short, unambiguous message can be high
@@ -60,9 +65,12 @@ class RoutingDecision:
     confidence: float
     reasoning: str
     completion: Completion
+    sentiment: str = "calm"
+    urgency: str = "normal"
+    order_number: str | None = None
 
 
-def _parse(raw: str) -> tuple[str, float, str]:
+def _parse(raw: str) -> tuple[str, float, str, str, str, str | None]:
     text = raw.strip()
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.M).strip()
@@ -79,24 +87,32 @@ def _parse(raw: str) -> tuple[str, float, str]:
     intent = data.get("intent")
     confidence = data.get("confidence")
     reasoning = str(data.get("reasoning", ""))
+    sentiment = data.get("sentiment") if data.get("sentiment") in ("calm", "frustrated", "angry") else "calm"
+    urgency = data.get("urgency") if data.get("urgency") in ("normal", "high") else "normal"
+    order_number = data.get("order_number")
+    order_number = order_number if isinstance(order_number, str) and order_number.strip() else None
 
     if intent not in INTENTS:
         raise ProviderError(f"Compass returned an unknown intent: {intent!r}")
     if not isinstance(confidence, int | float) or not (0.0 <= confidence <= 1.0):
         raise ProviderError(f"Compass returned an invalid confidence: {confidence!r}")
 
-    return intent, float(confidence), reasoning
+    return intent, float(confidence), reasoning, sentiment, urgency, order_number
 
 
-async def classify(message: str, *, tenant_name: str, provider_name: str | None = None) -> RoutingDecision:
+async def classify(
+    message: str, *, tenant_name: str, history: str = "", provider_name: str | None = None
+) -> RoutingDecision:
     provider = get_provider(provider_name or "groq")
+    user = f"{history}\n\n{USER_TEMPLATE.format(message=message)}" if history else USER_TEMPLATE.format(message=message)
     completion = await provider.complete(
         system=SYSTEM_PROMPT.format(tenant_name=tenant_name, intents=", ".join(INTENTS)),
-        user=USER_TEMPLATE.format(message=message),
+        user=user,
         max_tokens=1200,
         temperature=0.0,
     )
-    intent, confidence, reasoning = _parse(completion.text)
+    intent, confidence, reasoning, sentiment, urgency, order_number = _parse(completion.text)
     return RoutingDecision(
-        intent=intent, confidence=confidence, reasoning=reasoning, completion=completion
+        intent=intent, confidence=confidence, reasoning=reasoning, completion=completion,
+        sentiment=sentiment, urgency=urgency, order_number=order_number,
     )

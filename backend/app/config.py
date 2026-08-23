@@ -35,6 +35,8 @@ class Settings(BaseSettings):
 
     tau_route: float = 0.75
     tau_answer: float = 0.70
+    write_confirm_ceiling: float = 5000.0
+    pending_action_ttl_minutes: int = 10
 
     embed_model: str = "BAAI/bge-small-en-v1.5"
     embed_dim: int = 384

@@ -1,11 +1,57 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Escalation
+from app.db.models import AgentTrace, Escalation
 from app.threshold import Gate
+
+_HUMAN_REQUEST_PATTERNS = re.compile(
+    r"\b(talk|speak) to (a |an )?(human|person|agent|someone)\b"
+    r"|\breal (human|person|agent)\b"
+    r"|\bconnect me (with|to) (a |an )?(human|person|agent)\b",
+    re.IGNORECASE,
+)
+
+REPEATED_FAILURE_LIMIT = 3
+
+
+def wants_human(message: str) -> bool:
+    return bool(_HUMAN_REQUEST_PATTERNS.search(message))
+
+
+async def should_escalate_for_repeated_failure(session: AsyncSession, conversation_id: str) -> bool:
+    rows = (
+        await session.execute(
+            select(AgentTrace.id).where(
+                AgentTrace.conversation_id == conversation_id,
+                AgentTrace.agent_name == "none",
+            )
+        )
+    ).all()
+    return len(rows) >= REPEATED_FAILURE_LIMIT
+
+
+async def _build_handoff_summary(session: AsyncSession, conversation_id: str, gate_reason: str) -> str:
+    steps = (
+        await session.execute(
+            select(AgentTrace)
+            .where(AgentTrace.conversation_id == conversation_id)
+            .order_by(AgentTrace.step)
+        )
+    ).scalars().all()
+
+    lines = [f"Reason: {gate_reason}"]
+    for s in steps:
+        if s.agent_name in ("threshold", "beacon"):
+            continue
+        detail = s.output.get("answer") or s.output.get("reasoning") or str(s.output)[:200]
+        lines.append(f"- {s.agent_name}: {detail}")
+
+    return "\n".join(lines)
 
 
 @dataclass(frozen=True)
@@ -28,10 +74,12 @@ async def escalate(
     customer_message: str,
     gate: Gate,
 ) -> EscalationResult:
+    summary = await _build_handoff_summary(session, conversation_id, gate.reason)
+
     row = Escalation(
         tenant_id=None,
         conversation_id=conversation_id,
-        reason=gate.reason,
+        reason=summary,
         confidence=gate.confidence,
         status="open",
     )

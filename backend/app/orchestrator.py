@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents import almanac, beacon, compass, manifest
+from app.agents import almanac, beacon, compass, manifest, sentinel
 from app.agents.almanac import Citation
-from app.threshold import Verdict, evaluate
+from app.db.models import Conversation
+from app.history import build_history_block
+from app.threshold import Gate, RiskTier, Verdict, evaluate
 from app.trace import Trace
 
 DOCUMENT_INTENTS = {"policy_question"}
@@ -29,6 +32,7 @@ class OrchestrationResult:
     escalation_id: str | None = None
     citations: list[Citation] = field(default_factory=list)
     grounded: bool | None = None
+    awaiting_confirmation: bool = False
 
 
 async def handle_message(
@@ -36,20 +40,41 @@ async def handle_message(
     *,
     tenant_id: str,
     tenant_name: str,
-    conversation_id: str,
+    conversation: Conversation,
     message_id: str | None,
     customer_message: str,
     customer_id: str | None = None,
 ) -> OrchestrationResult:
+    conversation_id = str(conversation.id)
     trace = Trace(
         session=session, tenant_id=tenant_id, conversation_id=conversation_id, message_id=message_id
     )
 
-    decision = await compass.classify(customer_message, tenant_name=tenant_name)
+    if beacon.wants_human(customer_message):
+        return await _escalate(
+            session, trace, conversation_id, customer_message,
+            Gate(
+                verdict=Verdict.ESCALATE, reason="customer explicitly asked for a human",
+                tier=RiskTier.READ, confidence=1.0, threshold=0.0,
+            ),
+            intent="human_requested", confidence=1.0,
+        )
+
+    if conversation.pending_action:
+        result = await _handle_pending_action(session, trace, conversation, customer_message, tenant_name)
+        if result is not None:
+            return result
+
+    history = await build_history_block(session, conversation, exclude_message_id=message_id)
+
+    decision = await compass.classify(customer_message, tenant_name=tenant_name, history=history)
     await trace.record(
         agent_name="compass",
         input={"message": customer_message},
-        output={"intent": decision.intent, "reasoning": decision.reasoning},
+        output={
+            "intent": decision.intent, "reasoning": decision.reasoning,
+            "sentiment": decision.sentiment, "urgency": decision.urgency, "order_number": decision.order_number,
+        },
         completion=decision.completion,
         confidence=decision.confidence,
     )
@@ -61,27 +86,60 @@ async def handle_message(
         output={"verdict": routing_gate.verdict.value, "reason": routing_gate.reason, "tier": routing_gate.tier.value},
     )
 
-    if routing_gate.verdict in (Verdict.ESCALATE, Verdict.CONFIRM):
-        return await _escalate(session, trace, conversation_id, customer_message, routing_gate, decision)
+    if routing_gate.verdict is Verdict.ESCALATE:
+        return await _escalate(
+            session, trace, conversation_id, customer_message, routing_gate,
+            intent=decision.intent, confidence=decision.confidence,
+        )
+
+    if routing_gate.verdict is Verdict.CONFIRM:
+        return await _propose(session, trace, conversation, customer_message, decision)
 
     if decision.intent in DOCUMENT_INTENTS:
         return await _run_almanac(
-            session, trace, conversation_id, customer_message, tenant_name, decision, routing_gate
+            session, trace, conversation_id, customer_message, tenant_name, decision, history
         )
 
     if decision.intent in ORDER_INTENTS:
         answer = await manifest.answer_question(
-            session, customer_message, tenant_name=tenant_name, customer_id=customer_id
+            session, customer_message, tenant_name=tenant_name, customer_id=customer_id,
+            order_number_hint=decision.order_number, history=history,
         )
         await trace.record(
             agent_name="manifest",
             input={"question": customer_message, "customer_id": customer_id},
-            output={"answer": answer.text, "tool_calls": [c.name for c in answer.tool_calls]},
+            output={
+                "answer": answer.text, "tool_calls": [c.name for c in answer.tool_calls],
+                "grounded": answer.grounded,
+            },
             completion=answer.completion,
         )
+        answer_gate = evaluate(
+            intent=decision.intent, confidence=1.0 if answer.grounded else 0.0, is_routing_step=False
+        )
+        await trace.record(
+            agent_name="threshold",
+            input={"grounded": answer.grounded, "step": "answer"},
+            output={"verdict": answer_gate.verdict.value, "reason": answer_gate.reason},
+        )
+        if answer_gate.verdict is Verdict.ESCALATE:
+            return await _escalate(
+                session, trace, conversation_id, customer_message, answer_gate,
+                intent=decision.intent, confidence=decision.confidence,
+            )
         return OrchestrationResult(
             answer=answer.text, intent=decision.intent, confidence=decision.confidence,
             agent="manifest", escalated=False,
+        )
+
+    if await beacon.should_escalate_for_repeated_failure(session, conversation_id):
+        return await _escalate(
+            session, trace, conversation_id, customer_message,
+            Gate(
+                verdict=Verdict.ESCALATE, reason="repeated unresolved messages in this conversation",
+                tier=RiskTier.READ, confidence=decision.confidence, threshold=0.0,
+            ),
+            intent=decision.intent, confidence=decision.confidence,
         )
 
     await trace.record(
@@ -95,8 +153,95 @@ async def handle_message(
     )
 
 
-async def _run_almanac(session, trace, conversation_id, customer_message, tenant_name, decision, routing_gate):
-    answer = await almanac.answer_question(session, customer_message, tenant_name=tenant_name)
+async def _handle_pending_action(
+    session, trace, conversation: Conversation, customer_message: str, tenant_name: str
+) -> OrchestrationResult | None:
+    pending = conversation.pending_action
+    pending_intent = pending.get("intent", "unknown")
+
+    if datetime.now(UTC) > conversation.pending_action_expires_at:
+        await trace.record(
+            agent_name="sentinel", input={"step": "expire"}, output={"step": "expire", "pending_action": pending},
+        )
+        conversation.pending_action = None
+        conversation.pending_action_expires_at = None
+        return None
+
+    verdict = sentinel.classify_confirmation(customer_message)
+
+    if verdict == "suspicious":
+        await trace.record(agent_name="sentinel", input={"step": "suspicious"}, output={"step": "suspicious"})
+        conversation.pending_action = None
+        conversation.pending_action_expires_at = None
+        return await _escalate(
+            session, trace, str(conversation.id), customer_message,
+            Gate(
+                verdict=Verdict.ESCALATE, reason="injection-shaped reply to a pending confirmation",
+                tier=RiskTier.WRITE, confidence=0.0, threshold=1.0,
+            ),
+            intent=pending_intent, confidence=0.0,
+        )
+
+    if verdict == "unclear":
+        verdict = await sentinel.classify_confirmation_llm(pending, customer_message, tenant_name=tenant_name)
+
+    if verdict == "unrelated":
+        await trace.record(agent_name="sentinel", input={"step": "unrelated"}, output={"step": "unrelated"})
+        conversation.pending_action = None
+        conversation.pending_action_expires_at = None
+        return None
+
+    if verdict == "deny":
+        await trace.record(agent_name="sentinel", input={"step": "deny"}, output={"step": "deny", "pending_action": pending})
+        conversation.pending_action = None
+        conversation.pending_action_expires_at = None
+        return OrchestrationResult(
+            answer="No problem — I won't go ahead with that. Is there anything else I can help with?",
+            intent=pending_intent, confidence=1.0, agent="sentinel", escalated=False,
+        )
+
+    result = await sentinel.execute_action(session, conversation)
+    await trace.record(
+        agent_name="sentinel",
+        input={"step": "execute", "pending_action": pending},
+        output={"step": "execute", "order_number": result.order_number, "action": result.action},
+    )
+    return OrchestrationResult(
+        answer=result.reply, intent=pending_intent, confidence=1.0, agent="sentinel", escalated=False,
+    )
+
+
+async def _propose(session, trace, conversation: Conversation, customer_message: str, decision) -> OrchestrationResult:
+    result = await sentinel.propose_action(
+        session, conversation, intent=decision.intent, order_number_hint=decision.order_number,
+        customer_id=conversation.external_customer_id,
+    )
+    await trace.record(
+        agent_name="sentinel",
+        input={"intent": decision.intent, "order_number_hint": decision.order_number},
+        output={
+            "step": "propose", "escalate": result.escalate,
+            "pending_action": result.pending_action, "reason": result.escalate_reason,
+        },
+    )
+    if result.escalate:
+        return await _escalate(
+            session, trace, str(conversation.id), customer_message,
+            Gate(
+                verdict=Verdict.ESCALATE,
+                reason=result.escalate_reason or "write-tier proposal could not be completed automatically",
+                tier=RiskTier.WRITE, confidence=decision.confidence, threshold=1.0,
+            ),
+            intent=decision.intent, confidence=decision.confidence,
+        )
+    return OrchestrationResult(
+        answer=result.reply, intent=decision.intent, confidence=decision.confidence,
+        agent="sentinel", escalated=False, awaiting_confirmation=True,
+    )
+
+
+async def _run_almanac(session, trace, conversation_id, customer_message, tenant_name, decision, history: str = ""):
+    answer = await almanac.answer_question(session, customer_message, tenant_name=tenant_name, history=history)
     await trace.record(
         agent_name="almanac",
         input={"question": customer_message},
@@ -115,7 +260,10 @@ async def _run_almanac(session, trace, conversation_id, customer_message, tenant
         output={"verdict": answer_gate.verdict.value, "reason": answer_gate.reason},
     )
     if answer_gate.verdict is Verdict.ESCALATE:
-        return await _escalate(session, trace, conversation_id, customer_message, answer_gate, decision)
+        return await _escalate(
+            session, trace, conversation_id, customer_message, answer_gate,
+            intent=decision.intent, confidence=decision.confidence,
+        )
 
     return OrchestrationResult(
         answer=answer.text, intent=decision.intent, confidence=decision.confidence,
@@ -123,7 +271,7 @@ async def _run_almanac(session, trace, conversation_id, customer_message, tenant
     )
 
 
-async def _escalate(session, trace, conversation_id, customer_message, gate, decision) -> OrchestrationResult:
+async def _escalate(session, trace, conversation_id, customer_message, gate: Gate, *, intent: str, confidence: float) -> OrchestrationResult:
     result = await beacon.escalate(
         session, conversation_id=conversation_id, customer_message=customer_message, gate=gate
     )
@@ -133,6 +281,6 @@ async def _escalate(session, trace, conversation_id, customer_message, gate, dec
         output={"escalation_id": result.escalation_id},
     )
     return OrchestrationResult(
-        answer=result.customer_reply, intent=decision.intent, confidence=decision.confidence,
+        answer=result.customer_reply, intent=intent, confidence=confidence,
         agent="beacon", escalated=True, escalation_id=result.escalation_id,
     )

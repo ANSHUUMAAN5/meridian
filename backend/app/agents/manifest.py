@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-import json
+import re
 from dataclasses import dataclass
+from functools import partial
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.loop import LoopResult, ToolCall, run_tool_loop
 from app.db.models import Order
-from app.providers import Completion, get_provider
+from app.providers import Completion, get_provider_with_fallback
 
 SYSTEM_PROMPT = """You are a customer support assistant for {tenant_name}.
 
@@ -19,8 +21,11 @@ Rules:
    assume order details.
 2. If a tool returns no matching order, say so plainly and suggest the
    customer double-check the order number. Do not invent an order.
-3. Be brief — two or three sentences.
-4. You cannot cancel orders, issue refunds, or change anything. If asked to
+3. You may call more than one tool if you genuinely need to — for example,
+   listing recent orders and then checking the status of one of them. Only
+   call what you actually need.
+4. Be brief — two or three sentences.
+5. You cannot cancel orders, issue refunds, or change anything. If asked to
    do one of those, say a human needs to handle it — do not pretend to do it
    and do not say it has been done.
 
@@ -106,14 +111,30 @@ async def _list_recent_orders(session: AsyncSession, customer_id: str, limit: in
     }
 
 
-TOOL_IMPLS = {"get_order_status": _get_order_status, "list_recent_orders": _list_recent_orders}
+def _tool_impls(session: AsyncSession) -> dict:
+    return {
+        "get_order_status": partial(_get_order_status, session),
+        "list_recent_orders": partial(_list_recent_orders, session),
+    }
 
 
-@dataclass(frozen=True)
-class ToolCall:
-    name: str
-    args: dict
-    result: dict
+_ORDER_NUMBER_RE = re.compile(r"\b[A-Z]{2,3}\d{3,6}\b")
+_AMOUNT_RE = re.compile(r"\b\d+\.\d{2}\b")
+
+
+def audit_grounded(text: str, tool_calls: list[ToolCall]) -> bool:
+    """Every order number or amount the answer states must have actually
+    come from a tool result — not merely be plausible-looking text the model
+    produced on its own."""
+    evidence = " ".join(str(c.result) for c in tool_calls)
+
+    for order_number in _ORDER_NUMBER_RE.findall(text):
+        if order_number not in evidence:
+            return False
+    for amount in _AMOUNT_RE.findall(text):
+        if amount not in evidence:
+            return False
+    return True
 
 
 @dataclass(frozen=True)
@@ -121,6 +142,8 @@ class Answer:
     text: str
     tool_calls: list[ToolCall]
     completion: Completion
+    completions: list[Completion]
+    grounded: bool
 
 
 async def answer_question(
@@ -129,41 +152,36 @@ async def answer_question(
     *,
     tenant_name: str,
     customer_id: str | None = None,
+    order_number_hint: str | None = None,
+    history: str = "",
     provider_name: str | None = None,
 ) -> Answer:
-    provider = get_provider(provider_name or "groq")
+    provider = get_provider_with_fallback(provider_name or "groq")
     system = SYSTEM_PROMPT.format(tenant_name=tenant_name)
-    context = f"Customer id on file: {customer_id}\n\n" if customer_id else ""
-    user = f"{context}Customer question: {question}"
 
-    completion = await provider.complete(
-        system=system, user=user, max_tokens=800, temperature=0.0, tools=TOOL_SCHEMAS
+    context_lines = []
+    if history:
+        context_lines.append(history)
+    if customer_id:
+        context_lines.append(f"Customer id on file: {customer_id}")
+    if order_number_hint:
+        context_lines.append(f"Order number mentioned by the customer: {order_number_hint}")
+    context_lines.append(f"Customer question: {question}")
+    user = "\n\n".join(context_lines)
+
+    result: LoopResult = await run_tool_loop(
+        provider, system=system, user=user, tools=TOOL_SCHEMAS, tool_impls=_tool_impls(session),
     )
 
-    if not completion.tool_calls:
+    if not result.tool_calls:
+        text = result.text or "I need your order number to look that up — could you share it?"
         return Answer(
-            text=completion.text or "I need your order number to look that up — could you share it?",
-            tool_calls=[],
-            completion=completion,
+            text=text, tool_calls=[], completion=result.completions[-1],
+            completions=result.completions, grounded=True,
         )
 
-    executed: list[ToolCall] = []
-    for call in completion.tool_calls:
-        impl = TOOL_IMPLS.get(call.name)
-        if impl is None:
-            continue
-        result = await impl(session, **call.arguments)
-        executed.append(ToolCall(name=call.name, args=call.arguments, result=result))
-
-    follow_up = await provider.complete(
-        system=system,
-        user=(
-            f"{user}\n\nTool results:\n"
-            + "\n".join(json.dumps(c.result) for c in executed)
-            + "\n\nAnswer the customer's question using only these results."
-        ),
-        max_tokens=800,
-        temperature=0.0,
+    grounded = audit_grounded(result.text, result.tool_calls)
+    return Answer(
+        text=result.text, tool_calls=result.tool_calls, completion=result.completions[-1],
+        completions=result.completions, grounded=grounded,
     )
-
-    return Answer(text=follow_up.text, tool_calls=executed, completion=follow_up)

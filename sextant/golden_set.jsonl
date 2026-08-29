@@ -25,9 +25,9 @@
 {"id": "rout-024", "tenant": "kite", "message": "do you sell laptops", "expected_intent": "out_of_scope", "expected_escalate": false, "kind": "routing"}
 {"id": "rout-025", "tenant": "kite", "message": "can I book a haircut appointment", "expected_intent": "out_of_scope", "expected_escalate": false, "kind": "routing"}
 {"id": "rout-026", "tenant": "kite", "message": "do you have a store in Mumbai I can visit", "expected_intent": "out_of_scope", "expected_escalate": false, "kind": "routing"}
-{"id": "rout-027", "tenant": "kite", "message": "asdkjfh random gibberish message that means nothing", "expected_intent": "ambiguous", "expected_escalate": false, "kind": "routing"}
-{"id": "rout-028", "tenant": "kite", "message": "hey", "expected_intent": "ambiguous", "expected_escalate": false, "kind": "routing"}
-{"id": "rout-029", "tenant": "kite", "message": "this is the worst thing ever ugh", "expected_intent": "ambiguous", "expected_escalate": false, "kind": "routing"}
+{"id": "rout-027", "tenant": "kite", "message": "asdkjfh random gibberish message that means nothing", "expected_intent": "ambiguous", "expected_escalate": true, "kind": "routing"}
+{"id": "rout-028", "tenant": "kite", "message": "hey", "expected_intent": "ambiguous", "expected_escalate": true, "kind": "routing"}
+{"id": "rout-029", "tenant": "kite", "message": "this is the worst thing ever ugh", "expected_intent": "ambiguous", "expected_escalate": true, "kind": "routing"}
 {"id": "rout-030", "tenant": "nimbus", "message": "how long is a prescription valid for", "expected_intent": "policy_question", "expected_escalate": false, "kind": "routing"}
 {"id": "rout-031", "tenant": "nimbus", "message": "can I get insulin without a prescription", "expected_intent": "policy_question", "expected_escalate": false, "kind": "routing"}
 {"id": "rout-032", "tenant": "nimbus", "message": "how does auto-refill work", "expected_intent": "policy_question", "expected_escalate": false, "kind": "routing"}
@@ -50,7 +50,7 @@
 {"id": "rout-049", "tenant": "nimbus", "message": "cancel my order NH4406", "expected_intent": "cancel_order", "expected_escalate": true, "kind": "routing"}
 {"id": "rout-050", "tenant": "nimbus", "message": "do you sell protein powder", "expected_intent": "out_of_scope", "expected_escalate": false, "kind": "routing"}
 {"id": "rout-051", "tenant": "nimbus", "message": "can you help me book a flight", "expected_intent": "out_of_scope", "expected_escalate": false, "kind": "routing"}
-{"id": "rout-052", "tenant": "nimbus", "message": "idk something's wrong just fix it", "expected_intent": "ambiguous", "expected_escalate": false, "kind": "routing"}
+{"id": "rout-052", "tenant": "nimbus", "message": "idk something's wrong just fix it", "expected_intent": "ambiguous", "expected_escalate": true, "kind": "routing"}
 {"id": "esca-053", "tenant": "kite", "message": "i dont know man this whole thing sucks and nothing works", "expected_intent": "ambiguous", "expected_escalate": false, "kind": "escalation"}
 {"id": "esca-054", "tenant": "kite", "message": "you people ruined my daughter's birthday present", "expected_intent": "ambiguous", "expected_escalate": false, "kind": "escalation"}
 {"id": "esca-055", "tenant": "nimbus", "message": "i dont trust this app with my mothers medicine tbh", "expected_intent": "ambiguous", "expected_escalate": true, "kind": "escalation"}

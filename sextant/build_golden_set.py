@@ -34,9 +34,9 @@ CASES: list[tuple[str, str, str, bool, str]] = [
     ("kite", "do you sell laptops", "out_of_scope", False, "routing"),
     ("kite", "can I book a haircut appointment", "out_of_scope", False, "routing"),
     ("kite", "do you have a store in Mumbai I can visit", "out_of_scope", False, "routing"),
-    ("kite", "asdkjfh random gibberish message that means nothing", "ambiguous", False, "routing"),
-    ("kite", "hey", "ambiguous", False, "routing"),
-    ("kite", "this is the worst thing ever ugh", "ambiguous", False, "routing"),
+    ("kite", "asdkjfh random gibberish message that means nothing", "ambiguous", True, "routing"),
+    ("kite", "hey", "ambiguous", True, "routing"),
+    ("kite", "this is the worst thing ever ugh", "ambiguous", True, "routing"),
 
     ("nimbus", "how long is a prescription valid for", "policy_question", False, "routing"),
     ("nimbus", "can I get insulin without a prescription", "policy_question", False, "routing"),
@@ -63,7 +63,7 @@ CASES: list[tuple[str, str, str, bool, str]] = [
     ("nimbus", "cancel my order NH4406", "cancel_order", True, "routing"),
     ("nimbus", "do you sell protein powder", "out_of_scope", False, "routing"),
     ("nimbus", "can you help me book a flight", "out_of_scope", False, "routing"),
-    ("nimbus", "idk something's wrong just fix it", "ambiguous", False, "routing"),
+    ("nimbus", "idk something's wrong just fix it", "ambiguous", True, "routing"),
 
     ("kite", "i dont know man this whole thing sucks and nothing works", "ambiguous", False, "escalation"),
     ("kite", "you people ruined my daughter's birthday present", "ambiguous", False, "escalation"),

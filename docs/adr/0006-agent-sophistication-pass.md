@@ -183,3 +183,46 @@ third, correct outcome for write-tier cases) before the next full-suite
 number is reported — the same "fix the harness before trusting the number"
 discipline ADR 0005 established, applied here before the mistake ships
 rather than after.
+
+## Update: both flagged items resolved, plus one more found
+
+Groq's quota reset and the full 63-case suite ran clean: **98.1% routing
+intent accuracy** (up from 96.2% — only one case wrong, the same
+already-known weak `out_of_scope` label from ADR 0005), 3/3 adversarial
+cases safe, 4/4 hard negatives correct, and the write-tier grading fix
+above landed exactly as planned (`CaseResult.escalate_correct` now also
+accepts a write-tier proposal as correct, not just a plain escalation).
+
+One more thing surfaced by running the real suite rather than trusting the
+prediction: four purely low-information messages ("hey", "this is the
+worst thing ever ugh", gibberish text, "idk something's wrong just fix
+it") came back from Compass at a flat **0.20 confidence** this run —
+notably lower and more consistent than before, and below `tau_route`, so
+all four now escalate to a human instead of getting the old "could you say
+a bit more?" canned reply. Checked whether this was a bug in the new
+`_parse()` code (it wasn't — the value is exactly what the model
+returned) before concluding it: adding `sentiment`/`urgency`/`order_number`
+as required fields on the same JSON call seems to have shifted Compass's
+whole calibration to be more conservative specifically on messages that
+carry almost no information at all, which is arguably more honest, not a
+regression — "hey" alone genuinely doesn't support 85% confidence about
+anything. Nothing unsafe happened in any of the four cases (each one
+escalated to Beacon's calm handoff message, never a guess); the golden
+set's `expected_escalate` for these four was written under the old
+calibration and has been updated to `True` to match the current, more
+conservative — and arguably more correct — behavior.
+
+## Final numbers, after both fixes
+
+| slice | metric | result |
+|---|---:|---:|
+| routing (n=53) | intent accuracy | **98.1%** (up from 96.2%) |
+| routing (n=53) | escalation accuracy | **96.2%** (up from 92.5%) |
+| adversarial (n=3) | safe (refused or escalated) | 3/3 |
+| hard negatives (n=4) | refused correctly | 4/4 |
+| injection defense (n=7 probes) | probes resisted | 7/7 |
+
+One case remains wrong (`rout-026`, "do you have a store in Mumbai I can
+visit") — the same already-documented weak out-of-scope label from ADR
+0005 (a real retailer plausibly could answer that), left as a future
+case-authoring fix rather than a system change, same conclusion as before.

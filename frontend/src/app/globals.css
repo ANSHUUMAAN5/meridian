@@ -1,0 +1,125 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is([data-theme="dark"] *));
+
+:root {
+  --canvas: #0b0d0f;
+  --surface: #14181c;
+  --surface-raised: #181d22;
+  --line: #232a31;
+  --line-strong: #333c44;
+  --text: #f2f5f7;
+  --muted-text: #9aa4ac;
+  --faint-text: #6e7880;
+
+  --compass: #7c6bff;
+  --almanac: #3da9fc;
+  --manifest: #21c08b;
+  --beacon: #f5a524;
+  --danger: #f04438;
+
+  --confidence-low: #f5a524;
+  --confidence-high: #21c08b;
+
+  --background: var(--canvas);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface-raised);
+  --popover-foreground: var(--text);
+  --primary: var(--compass);
+  --primary-foreground: var(--text);
+  --secondary: var(--surface-raised);
+  --secondary-foreground: var(--text);
+  --muted: var(--surface-raised);
+  --muted-foreground: var(--muted-text);
+  --accent: var(--surface-raised);
+  --accent-foreground: var(--text);
+  --destructive: var(--danger);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--compass);
+  --radius: 0.625rem;
+}
+
+[data-theme="light"] {
+  --canvas: #f6f6f8;
+  --surface: #ffffff;
+  --surface-raised: #fbfbfc;
+  --line: #e2e2e8;
+  --line-strong: #cbcbd4;
+  --text: #15151c;
+  --muted-text: #5c5c6b;
+  --faint-text: #8b8b98;
+
+  --compass: #6a54e8;
+  --almanac: #0e7fd1;
+  --manifest: #0e8f66;
+  --beacon: #b4750b;
+  --danger: #d0281e;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-text: var(--text);
+  --color-muted-text: var(--muted-text);
+  --color-faint-text: var(--faint-text);
+
+  --color-compass: var(--compass);
+  --color-almanac: var(--almanac);
+  --color-manifest: var(--manifest);
+  --color-beacon: var(--beacon);
+  --color-danger: var(--danger);
+
+  --color-confidence-low: var(--confidence-low);
+  --color-confidence-high: var(--confidence-high);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  background: var(--canvas);
+  color: var(--text);
+  font-family: var(--font-sans), -apple-system, "Segoe UI", sans-serif;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--compass) 25%, transparent);
+  color: var(--text);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+}

@@ -14,7 +14,7 @@ from app.orchestrator import handle_message
 from app.auth import create_token
 from app.config import get_settings
 from app.db.base import get_engine, get_sessionmaker
-from app.db.models import Conversation, Message, Tenant, User
+from app.db.models import Conversation, Message, Order, Tenant, User
 from app.deps import Principal, current_principal, tenant_session
 from app.providers import get_provider
 
@@ -96,7 +96,7 @@ async def demo_login(body: DemoLogin) -> dict:
         if tenant is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "demo tenant not seeded")
 
-        from sqlalchemy import text
+        from sqlalchemy import func, text
 
         await session.execute(
             text("select set_config('app.current_tenant', :t, true)"), {"t": str(tenant.id)}
@@ -104,6 +104,16 @@ async def demo_login(body: DemoLogin) -> dict:
         user = (
             await session.execute(
                 select(User).where(User.tenant_id == tenant.id).order_by(User.created_at).limit(1)
+            )
+        ).scalar_one_or_none()
+
+        demo_customer_id = (
+            await session.execute(
+                select(Order.external_customer_id)
+                .where(Order.tenant_id == tenant.id)
+                .group_by(Order.external_customer_id)
+                .order_by(func.count().desc())
+                .limit(1)
             )
         ).scalar_one_or_none()
 
@@ -116,6 +126,7 @@ async def demo_login(body: DemoLogin) -> dict:
         ),
         "token_type": "bearer",
         "tenant": {"id": str(tenant.id), "name": tenant.name, "slug": tenant.slug},
+        "customer_id": demo_customer_id,
     }
 
 

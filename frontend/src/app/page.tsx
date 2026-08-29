@@ -34,7 +34,7 @@ export default function Home() {
     setError(null);
     try {
       const result = await demoLogin(slug);
-      setSession({ token: result.access_token, tenant: result.tenant });
+      setSession({ token: result.access_token, tenant: result.tenant, customerId: result.customer_id });
       router.push("/console/chat");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Could not reach the Meridian API.");

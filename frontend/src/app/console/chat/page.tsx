@@ -83,7 +83,11 @@ export default function ChatPage() {
     setInput("");
     setSending(true);
     try {
-      const res = await sendChatMessage(session.token, { message: text, conversation_id: conversationId });
+      const res = await sendChatMessage(session.token, {
+        message: text,
+        conversation_id: conversationId,
+        customer_id: session.customerId ?? undefined,
+      });
       setConversationId(res.conversation_id);
       setMessages((prev) => [...prev, { id: uid(), role: "assistant", content: res.answer, meta: res }]);
     } catch (e) {

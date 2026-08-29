@@ -119,20 +119,41 @@ def _tool_impls(session: AsyncSession) -> dict:
 
 
 _ORDER_NUMBER_RE = re.compile(r"\b[A-Z]{2,3}\d{3,6}\b")
-_AMOUNT_RE = re.compile(r"\b\d+\.\d{2}\b")
+_AMOUNT_RE = re.compile(r"[\d,]*\d\.\d{2}\b")
+
+
+def _flatten_numbers(value) -> list[float]:
+    if isinstance(value, bool):
+        return []
+    if isinstance(value, (int, float)):
+        return [float(value)]
+    if isinstance(value, dict):
+        out = []
+        for v in value.values():
+            out.extend(_flatten_numbers(v))
+        return out
+    if isinstance(value, list):
+        out = []
+        for v in value:
+            out.extend(_flatten_numbers(v))
+        return out
+    return []
 
 
 def audit_grounded(text: str, tool_calls: list[ToolCall]) -> bool:
     """Every order number or amount the answer states must have actually
     come from a tool result — not merely be plausible-looking text the model
-    produced on its own."""
-    evidence = " ".join(str(c.result) for c in tool_calls)
-
+    produced on its own. Amounts are compared numerically, not as strings —
+    a model writing "2,499.00" for a tool result of 2499.0 is the same
+    number, correctly reformatted for a customer to read, not a hallucination."""
+    evidence_text = " ".join(str(c.result) for c in tool_calls)
     for order_number in _ORDER_NUMBER_RE.findall(text):
-        if order_number not in evidence:
+        if order_number not in evidence_text:
             return False
-    for amount in _AMOUNT_RE.findall(text):
-        if amount not in evidence:
+
+    evidence_amounts = {round(n, 2) for c in tool_calls for n in _flatten_numbers(c.result)}
+    for raw_amount in _AMOUNT_RE.findall(text):
+        if round(float(raw_amount.replace(",", "")), 2) not in evidence_amounts:
             return False
     return True
 

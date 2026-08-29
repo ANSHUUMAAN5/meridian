@@ -24,6 +24,7 @@ export type DemoLoginResponse = {
   access_token: string;
   token_type: string;
   tenant: { id: string; name: string; slug: string };
+  customer_id: string | null;
 };
 
 export class ApiError extends Error {

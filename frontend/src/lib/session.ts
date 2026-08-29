@@ -7,6 +7,7 @@ const STORAGE_KEY = "meridian_session";
 export type Session = {
   token: string;
   tenant: { id: string; name: string; slug: string };
+  customerId: string | null;
 };
 
 function readSession(): Session | null {

@@ -21,6 +21,22 @@ FIXED_REPLIES = {
     "ambiguous": "I want to make sure I help with the right thing — could you say a bit more about what you need?",
 }
 
+CLOSING_REPLY = "You're welcome — glad I could help. Let me know if there's anything else."
+
+_CLOSING_PHRASES = (
+    "ok", "okay", "ok thanks", "okay thanks", "ok thank you", "okay thank you",
+    "ok thankyou", "okay thankyou", "thanks", "thank you", "thankyou",
+    "thanks a lot", "thank you so much", "great thanks", "perfect thanks",
+    "cool thanks", "alright thanks", "sounds good", "sounds good thanks",
+    "no need", "that's all", "thats all", "that's it", "thats it",
+    "nothing else", "got it", "got it thanks", "bye", "goodbye", "all good",
+)
+
+
+def _is_closing_remark(message: str) -> bool:
+    normalized = message.strip().lower().rstrip(".!")
+    return normalized in _CLOSING_PHRASES
+
 
 @dataclass(frozen=True)
 class OrchestrationResult:
@@ -57,13 +73,23 @@ async def handle_message(
                 verdict=Verdict.ESCALATE, reason="customer explicitly asked for a human",
                 tier=RiskTier.READ, confidence=1.0, threshold=0.0,
             ),
-            intent="human_requested", confidence=1.0,
+            intent="human_requested", confidence=1.0, context="human_requested",
         )
 
     if conversation.pending_action:
         result = await _handle_pending_action(session, trace, conversation, customer_message, tenant_name)
         if result is not None:
             return result
+
+    if _is_closing_remark(customer_message):
+        await trace.record(
+            agent_name="none",
+            input={"message": customer_message},
+            output={"step": "closing_remark", "answer": CLOSING_REPLY},
+        )
+        return OrchestrationResult(
+            answer=CLOSING_REPLY, intent="closing_remark", confidence=1.0, agent="none", escalated=False,
+        )
 
     history = await build_history_block(session, conversation, exclude_message_id=message_id)
 
@@ -90,6 +116,7 @@ async def handle_message(
         return await _escalate(
             session, trace, conversation_id, customer_message, routing_gate,
             intent=decision.intent, confidence=decision.confidence,
+            context="hard_tier" if routing_gate.tier is RiskTier.HARD else "low_confidence",
         )
 
     if routing_gate.verdict is Verdict.CONFIRM:
@@ -125,7 +152,7 @@ async def handle_message(
         if answer_gate.verdict is Verdict.ESCALATE:
             return await _escalate(
                 session, trace, conversation_id, customer_message, answer_gate,
-                intent=decision.intent, confidence=decision.confidence,
+                intent=decision.intent, confidence=decision.confidence, context="ungrounded_answer",
             )
         return OrchestrationResult(
             answer=answer.text, intent=decision.intent, confidence=decision.confidence,
@@ -139,7 +166,7 @@ async def handle_message(
                 verdict=Verdict.ESCALATE, reason="repeated unresolved messages in this conversation",
                 tier=RiskTier.READ, confidence=decision.confidence, threshold=0.0,
             ),
-            intent=decision.intent, confidence=decision.confidence,
+            intent=decision.intent, confidence=decision.confidence, context="repeated_failure",
         )
 
     await trace.record(
@@ -179,7 +206,7 @@ async def _handle_pending_action(
                 verdict=Verdict.ESCALATE, reason="injection-shaped reply to a pending confirmation",
                 tier=RiskTier.WRITE, confidence=0.0, threshold=1.0,
             ),
-            intent=pending_intent, confidence=0.0,
+            intent=pending_intent, confidence=0.0, context="write_tier_risk",
         )
 
     if verdict == "unclear":
@@ -232,7 +259,7 @@ async def _propose(session, trace, conversation: Conversation, customer_message:
                 reason=result.escalate_reason or "write-tier proposal could not be completed automatically",
                 tier=RiskTier.WRITE, confidence=decision.confidence, threshold=1.0,
             ),
-            intent=decision.intent, confidence=decision.confidence,
+            intent=decision.intent, confidence=decision.confidence, context="write_tier_risk",
         )
     return OrchestrationResult(
         answer=result.reply, intent=decision.intent, confidence=decision.confidence,
@@ -262,7 +289,7 @@ async def _run_almanac(session, trace, conversation_id, customer_message, tenant
     if answer_gate.verdict is Verdict.ESCALATE:
         return await _escalate(
             session, trace, conversation_id, customer_message, answer_gate,
-            intent=decision.intent, confidence=decision.confidence,
+            intent=decision.intent, confidence=decision.confidence, context="ungrounded_answer",
         )
 
     return OrchestrationResult(
@@ -271,9 +298,12 @@ async def _run_almanac(session, trace, conversation_id, customer_message, tenant
     )
 
 
-async def _escalate(session, trace, conversation_id, customer_message, gate: Gate, *, intent: str, confidence: float) -> OrchestrationResult:
+async def _escalate(
+    session, trace, conversation_id, customer_message, gate: Gate, *,
+    intent: str, confidence: float, context: str | None = None,
+) -> OrchestrationResult:
     result = await beacon.escalate(
-        session, conversation_id=conversation_id, customer_message=customer_message, gate=gate
+        session, conversation_id=conversation_id, customer_message=customer_message, gate=gate, context=context,
     )
     await trace.record(
         agent_name="beacon",

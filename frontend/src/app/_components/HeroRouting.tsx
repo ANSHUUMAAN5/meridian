@@ -62,7 +62,7 @@ export default function HeroRouting() {
   const fillPct = phase >= 2 ? loop.confidence * 100 : 0;
 
   return (
-    <div className="mx-auto w-full max-w-xl rounded-2xl border border-line bg-surface/80 p-5 backdrop-blur-sm">
+    <div className="mx-auto w-full max-w-xl rounded-2xl border border-line/60 bg-surface/70 p-5 backdrop-blur-md shadow-[0_20px_50px_-20px_rgba(40,36,29,0.25)]">
       <div className="mb-4 flex items-center justify-between">
         <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-faint-text">live routing demo</p>
         <div className="flex gap-1">

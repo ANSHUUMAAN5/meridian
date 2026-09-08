@@ -45,7 +45,7 @@ export default function Landing() {
     <div className="flex flex-1 flex-col bg-canvas">
       <header className="flex items-center justify-between border-b border-line px-6 py-4">
         <div className="flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-compass" style={{ boxShadow: "0 0 8px 1px var(--compass)" }} />
+          <span className="h-1.5 w-1.5 rounded-full bg-text" />
           <span className="font-mono text-[12px] uppercase tracking-[0.15em] text-text">meridian</span>
         </div>
         <div className="flex items-center gap-5">
@@ -59,7 +59,7 @@ export default function Landing() {
           </a>
           <Link
             href="/demo"
-            className="rounded-md bg-compass px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-wider text-white transition-opacity hover:opacity-90"
+            className="rounded-full bg-text px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-wider text-canvas transition-opacity hover:opacity-90"
           >
             try the demo
           </Link>
@@ -70,7 +70,7 @@ export default function Landing() {
       <div className="border-b border-line bg-surface/60 px-6 py-2 text-center">
         <p className="font-mono text-[11px] text-muted-text">
           Real accuracy, not a screenshot —{" "}
-          <a href="#metrics" className="text-compass hover:underline">
+          <a href="#metrics" className="text-text underline decoration-line hover:decoration-text">
             see the live numbers
           </a>
         </p>
@@ -79,12 +79,10 @@ export default function Landing() {
       {/* hero */}
       <section className="relative overflow-hidden px-6 py-20">
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.35]"
+          className="pointer-events-none absolute inset-0"
           style={{
-            backgroundImage:
-              "linear-gradient(to right, color-mix(in srgb, var(--line) 60%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--line) 60%, transparent) 1px, transparent 1px)",
-            backgroundSize: "56px 56px",
-            maskImage: "radial-gradient(ellipse 70% 60% at 50% 30%, black 0%, transparent 75%)",
+            background:
+              "radial-gradient(600px 380px at 20% 10%, color-mix(in srgb, var(--accent-rare) 14%, transparent), transparent 70%)",
           }}
         />
         <div className="relative z-10 mx-auto grid max-w-6xl gap-12 lg:grid-cols-2 lg:items-center">
@@ -105,7 +103,7 @@ export default function Landing() {
             <div className="flex items-center gap-4">
               <Link
                 href="/demo"
-                className="rounded-md bg-compass px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                className="rounded-full bg-text px-5 py-2.5 text-sm font-medium text-canvas transition-opacity hover:opacity-90"
               >
                 Try the demo →
               </Link>
@@ -232,7 +230,7 @@ export default function Landing() {
         </p>
         <Link
           href="/demo"
-          className="inline-block rounded-md bg-compass px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
+          className="inline-block rounded-full bg-text px-6 py-3 text-sm font-medium text-canvas transition-opacity hover:opacity-90"
         >
           Try the demo →
         </Link>

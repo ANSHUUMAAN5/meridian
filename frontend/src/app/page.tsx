@@ -7,46 +7,43 @@ import HeroRouting from "./_components/HeroRouting";
 import LiveMetrics from "./_components/LiveMetrics";
 import LiveTenantDemo from "./_components/LiveTenantDemo";
 import ThresholdPlayground from "./_components/ThresholdPlayground";
+import BenefitCards from "./_components/BenefitCards";
+
+const HERO_PHOTO =
+  "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?fm=jpg&q=80&w=1800&auto=format&fit=crop";
+const SUPPORT_PHOTO =
+  "https://images.unsplash.com/photo-1626863905121-3b0c0ed7b94c?fm=jpg&q=80&w=1200&auto=format&fit=crop";
 
 const SETUP = [
   {
     n: "01",
-    title: "Bring your own documents",
-    body: "Drop in return policies, shipping rules, whatever your support team already answers from. Meridian chunks and embeds them on upload — searchable in a couple of seconds, scoped to you.",
-    detail: "txt · md · 500KB per file",
+    title: "Add what you already know",
+    body: "Drop in the return policy, the shipping rules, the FAQ your team keeps re-typing. It's searchable a couple of seconds later.",
   },
   {
     n: "02",
-    title: "Point it at your order system",
-    body: "Manifest calls a tool interface, not a specific vendor. The demo is backed by a Postgres orders table; swapping that for a real commerce API is an adapter, not a rewrite.",
-    detail: "get_order_status · list_recent_orders · get_return_window",
+    title: "Connect your orders",
+    body: "So it can answer \"where is my order\" with a real answer, from your real system, instead of a canned one.",
   },
   {
     n: "03",
-    title: "Draw your own line",
-    body: "Confidence thresholds are configuration, not constants — a pharmacy needs a different line than a clothing store. Mark whole categories as never-automate and no score can override it.",
-    detail: "τ_route · τ_answer · read / write / hard tiers",
+    title: "Say what it may decide alone",
+    body: "A clothing store and a pharmacy need different limits. Mark anything that should always reach a person, and nothing overrides it.",
   },
   {
     n: "04",
-    title: "Watch every decision it makes",
-    body: "Each step is logged with the model, the confidence, the latency and the cost. Anything it refuses lands in a human inbox with the full reasoning already attached.",
-    detail: "trace · relay · sextant",
+    title: "Watch it work",
+    body: "Every answer it gives, every question it refused, and every case it passed to your team — all in one place.",
   },
 ];
 
-const PLATFORM = [
-  { name: "Compass", kind: "agent", color: "var(--compass)", body: "Reads the message and decides who handles it. Cannot read documents or orders itself — it only routes." },
-  { name: "Almanac", kind: "agent", color: "var(--almanac)", body: "Answers from your documents, with a citation for every claim. Has no access to order data at all." },
-  { name: "Manifest", kind: "agent", color: "var(--manifest)", body: "Answers account questions through real tool calls, reasoning across as many lookups as it needs." },
-  { name: "Beacon", kind: "agent", color: "var(--beacon)", body: "Hands off to a person with a written summary of what was asked, tried and found." },
-  { name: "Threshold", kind: "system", color: "var(--faint-text)", body: "The gate. Plain code, no model — a comparison should behave identically every single time." },
-  { name: "Sentinel", kind: "agent", color: "var(--danger)", body: "Proposes a refund or cancellation, waits for a genuine confirmation, and only then executes it." },
-  { name: "Trace", kind: "system", color: "var(--faint-text)", body: "Records every step: prompt, response, confidence, latency, tokens, cost." },
-  { name: "Sextant", kind: "system", color: "var(--faint-text)", body: "Replays a labeled evaluation set and scores the whole system, so the numbers are measured." },
+const TEAM = [
+  { name: "Compass", role: "Decides who should handle it", color: "var(--compass)" },
+  { name: "Almanac", role: "Answers from your documents", color: "var(--almanac)" },
+  { name: "Manifest", role: "Looks up real order details", color: "var(--manifest)" },
+  { name: "Beacon", role: "Hands over to your team", color: "var(--beacon)" },
+  { name: "Sentinel", role: "Asks before changing anything", color: "var(--danger)" },
 ];
-
-const STACK = ["FastAPI", "Postgres + pgvector", "Row-level security", "Next.js", "Groq", "Gemini"];
 
 export default function Landing() {
   return (
@@ -54,17 +51,12 @@ export default function Landing() {
       <SiteNav />
 
       {/* hero */}
-      <section className="relative overflow-hidden lg:min-h-[640px]">
-        <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[58%] lg:block">
-          <img
-            src="https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?fm=jpg&q=80&w=1800&auto=format&fit=crop"
-            alt=""
-            className="h-full w-full object-cover"
-            style={{ objectPosition: "60% 45%" }}
-          />
+      <section className="relative overflow-hidden lg:min-h-[620px]">
+        <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[56%] lg:block">
+          <img src={HERO_PHOTO} alt="" className="h-full w-full object-cover" style={{ objectPosition: "60% 45%" }} />
           <div
             className="absolute inset-0"
-            style={{ background: "linear-gradient(to right, var(--canvas) 0%, color-mix(in srgb, var(--canvas) 55%, transparent) 22%, transparent 48%)" }}
+            style={{ background: "linear-gradient(to right, var(--canvas) 0%, color-mix(in srgb, var(--canvas) 55%, transparent) 24%, transparent 50%)" }}
           />
           <div
             className="absolute inset-0"
@@ -79,28 +71,25 @@ export default function Landing() {
             transition={{ duration: 0.5 }}
             className="max-w-xl"
           >
-            <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.2em] text-faint-text">
-              multi-tenant · multi-agent · confidence-gated
-            </p>
-            <h1 className="mb-5 text-[42px] font-semibold leading-[1.08] tracking-tight text-text sm:text-5xl">
-              Support agents that know
+            <h1 className="mb-5 text-[42px] font-semibold leading-[1.08] tracking-tight text-text sm:text-[52px]">
+              Answer your customers.
               <br />
-              when to stop talking.
+              Know when not to.
             </h1>
-            <p className="mb-8 max-w-md text-[15.5px] leading-relaxed text-muted-text">
-              Meridian answers your customers from your own documents and order data, routes each question
-              to a specialist that can actually reach the right information, and hands anything risky to a
-              human instead of guessing — with an accuracy number it can show you.
+            <p className="mb-8 max-w-md text-[16px] leading-relaxed text-muted-text">
+              Meridian handles the questions your support team answers a hundred times a week — from your
+              own documents and your own order data. When it isn&apos;t sure, it says so and passes the
+              customer to a person.
             </p>
             <div className="flex flex-wrap items-center gap-4">
               <a
                 href="#demo"
                 className="rounded-full bg-text px-5 py-2.5 text-sm font-medium text-canvas transition-opacity hover:opacity-90"
               >
-                See it answer something →
+                See it answer something
               </a>
-              <a href="#setup" className="text-[13.5px] text-muted-text transition-colors hover:text-text">
-                How you&apos;d set it up
+              <a href="#setup" className="text-[14px] text-muted-text transition-colors hover:text-text">
+                How you&apos;d set it up →
               </a>
             </div>
           </motion.div>
@@ -109,42 +98,38 @@ export default function Landing() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="mt-10 max-w-md lg:absolute lg:right-8 lg:bottom-4 lg:mt-0 lg:w-[370px] xl:right-16"
+            className="mt-10 max-w-md lg:absolute lg:right-8 lg:bottom-4 lg:mt-0 lg:w-[360px] xl:right-16"
           >
             <HeroRouting />
           </motion.div>
         </div>
 
         <div className="lg:hidden">
-          <img
-            src="https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?fm=jpg&q=80&w=1200&auto=format&fit=crop"
-            alt=""
-            className="h-44 w-full object-cover"
-            style={{ objectPosition: "50% 45%" }}
-          />
+          <img src={HERO_PHOTO} alt="" className="h-44 w-full object-cover" style={{ objectPosition: "50% 45%" }} />
         </div>
       </section>
 
-      {/* stack strip */}
-      <section className="border-y border-line bg-surface/50">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-8 gap-y-3 px-6 py-4">
-          <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint-text">
-            built on
-          </span>
-          {STACK.map((s) => (
-            <span key={s} className="font-mono text-[12px] text-muted-text">
-              {s}
-            </span>
-          ))}
+      {/* benefit cards */}
+      <section className="px-6 py-16">
+        <div className="mx-auto max-w-6xl">
+          <motion.h2
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            className="mb-8 max-w-2xl text-[30px] font-semibold leading-[1.15] tracking-tight text-text"
+          >
+            Fewer repeat questions. No invented answers.
+          </motion.h2>
+          <BenefitCards />
         </div>
       </section>
 
       {/* live demo */}
       <Section
         id="demo"
-        eyebrow="try it right here"
-        title="Two companies. One codebase. Different answers."
-        lede="This runs against the live backend — real retrieval, real routing, real gating. Ask both companies the same question and watch them diverge, because each one only ever sees its own data."
+        bg="var(--panel-sage)"
+        title="Try it on two different companies"
+        lede="This is the real thing, not a video. Ask a clothing store and a pharmacy the same question and watch the answers come back different — because each one can only see its own information."
       >
         <LiveTenantDemo />
       </Section>
@@ -152,9 +137,9 @@ export default function Landing() {
       {/* setup */}
       <Section
         id="setup"
-        eyebrow="for your own company"
-        title="Four things to make it yours"
-        lede="The agents are generic. The knowledge, the data and the limits are not — that's the whole design. Point it at a clothing store and it answers about sizing; point it at a pharmacy and it refuses to answer about dosages."
+        bg="var(--panel-sand)"
+        title="Four steps to point it at your business"
+        lede="The system is the same for everyone. What it knows, what it can reach, and what it's allowed to decide are entirely yours."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           {SETUP.map((s, i) => (
@@ -167,120 +152,87 @@ export default function Landing() {
               className="rounded-2xl border border-line bg-surface p-6"
             >
               <span className="font-mono text-[11px] tracking-[0.1em] text-faint-text">{s.n}</span>
-              <h3 className="mt-3 mb-2 text-[17px] font-semibold text-text">{s.title}</h3>
-              <p className="mb-4 text-[14px] leading-relaxed text-muted-text">{s.body}</p>
-              <p className="font-mono text-[10.5px] text-faint-text">{s.detail}</p>
+              <h3 className="mt-3 mb-2 text-[18px] font-semibold text-text">{s.title}</h3>
+              <p className="text-[14px] leading-relaxed text-muted-text">{s.body}</p>
             </motion.div>
           ))}
         </div>
       </Section>
 
-      {/* gating */}
+      {/* safety */}
       <Section
-        id="gating"
-        eyebrow="the mechanic"
-        title="Move the line yourself"
-        lede="Every answer is scored, and one number decides whether the system acts alone. These are real confidence values from a real evaluation run — drag the threshold and watch what changes hands."
+        id="safety"
+        bg="var(--panel-blush)"
+        title="It asks a person when it should"
+        lede="Some questions should never get an automatic answer, however confident the system sounds. Drag the slider and watch what changes hands — these are real scores from a real test run."
       >
-        <ThresholdPlayground />
+        <div className="grid gap-6 lg:grid-cols-[1fr_300px] lg:items-start">
+          <ThresholdPlayground />
+          <div className="overflow-hidden rounded-2xl border border-line">
+            <img src={SUPPORT_PHOTO} alt="Support team at work" className="h-[240px] w-full object-cover lg:h-[300px]" />
+            <p className="bg-surface px-5 py-4 text-[13.5px] leading-relaxed text-muted-text">
+              Anything it refuses arrives in your team&apos;s inbox with the question, what it already
+              tried, and what it found — so nobody starts from scratch.
+            </p>
+          </div>
+        </div>
       </Section>
 
-      {/* platform */}
+      {/* the team */}
       <Section
-        id="platform"
-        eyebrow="the platform"
-        title="Five agents, three systems, separate keys to the building"
-        lede="Almanac physically cannot read order data. Manifest physically cannot read documents. Only Sentinel can execute a write, and only after a customer confirms it. A compromised document can produce a bad sentence — never a bad action."
+        id="team"
+        title="A small team of specialists, not one know-it-all"
+        lede="Each one has a single job and can only reach what that job needs. The one that reads your documents cannot touch an order. The one that changes an order always asks you first."
       >
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {PLATFORM.map((c, i) => (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {TEAM.map((c, i) => (
             <motion.div
               key={c.name}
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
-              transition={{ duration: 0.35, delay: (i % 4) * 0.06 }}
-              className="relative overflow-hidden rounded-2xl border border-line bg-surface p-5"
+              transition={{ duration: 0.35, delay: i * 0.06 }}
+              className="rounded-2xl border border-line bg-surface p-5"
             >
-              <div className="absolute inset-x-0 top-0 h-[2px] opacity-70" style={{ background: c.color }} />
-              <div className="mb-2 flex items-baseline justify-between gap-2">
-                <span className="text-[15px] font-semibold text-text">{c.name}</span>
-                <span className="font-mono text-[9.5px] uppercase tracking-wider text-faint-text">{c.kind}</span>
-              </div>
-              <p className="text-[13px] leading-relaxed text-muted-text">{c.body}</p>
+              <span className="mb-3 block h-2 w-2 rounded-full" style={{ background: c.color }} />
+              <p className="mb-1.5 text-[15px] font-semibold text-text">{c.name}</p>
+              <p className="text-[13px] leading-relaxed text-muted-text">{c.role}</p>
             </motion.div>
           ))}
         </div>
       </Section>
 
-      {/* evidence */}
+      {/* numbers */}
       <Section
-        id="evidence"
-        eyebrow="evidence, not adjectives"
-        title="Every number here is read from the database"
-        lede="Accuracy comes from a hand-labeled evaluation set replayed against the running system. Nothing on this page is a screenshot, and nothing is typed in by hand."
+        id="numbers"
+        bg="var(--panel-sky)"
+        title="The numbers come from the running system"
+        lede="Not a screenshot, not typed in by hand. Accuracy is measured by replaying a set of questions whose right answers were written down in advance."
       >
         <LiveMetrics />
-
-        <div className="mt-8 rounded-2xl border border-line bg-surface p-6">
-          <p className="mb-4 font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint-text">
-            how the isolation actually works
-          </p>
-          <div className="flex flex-col gap-2.5">
-            {[
-              { label: "browser", items: ["landing", "console"] },
-              { label: "fastapi", items: ["compass", "almanac", "manifest", "beacon", "sentinel"] },
-              { label: "postgres + pgvector", items: ["tenants", "documents", "orders", "traces"] },
-            ].map((row, i, arr) => (
-              <div key={row.label}>
-                <div className="rounded-xl border border-line bg-canvas p-4">
-                  <p className="mb-2.5 font-mono text-[10px] uppercase tracking-[0.15em] text-faint-text">
-                    {row.label}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {row.items.map((item) => (
-                      <span
-                        key={item}
-                        className="rounded-full border border-line px-2.5 py-1 font-mono text-[11.5px] text-text"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                {i < arr.length - 1 && <div className="py-1 text-center text-faint-text">↓</div>}
-              </div>
-            ))}
-          </div>
-          <p className="mt-5 text-[14px] leading-relaxed text-muted-text">
-            Tenant separation is enforced by Postgres row-level security, not by application code
-            remembering to filter. A deliberately unfiltered query still returns only the current
-            tenant&apos;s rows — and an automated cross-tenant test suite proves it on every commit.
-          </p>
-        </div>
       </Section>
 
       {/* CTA */}
-      <section className="border-t border-line px-6 py-20">
+      <section className="px-6 py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="mb-4 text-3xl font-semibold tracking-tight text-text">
-            Ask it something it can&apos;t answer.
+          <h2 className="mb-4 text-[32px] font-semibold tracking-tight text-text">
+            Try to catch it out.
           </h2>
-          <p className="mx-auto mb-8 max-w-md text-[15px] leading-relaxed text-muted-text">
-            The console is open — no signup. Ask something clean and watch it answer with a citation.
-            Then ask something vague, and watch it decline instead of inventing one.
+          <p className="mx-auto mb-8 max-w-md text-[15.5px] leading-relaxed text-muted-text">
+            No sign-up. Ask something it should know and watch it cite the answer. Then ask something
+            it shouldn&apos;t, and watch it refuse.
           </p>
           <Link
             href="/demo"
             className="inline-block rounded-full bg-text px-6 py-3 text-sm font-medium text-canvas transition-opacity hover:opacity-90"
           >
-            Open the console →
+            Open the demo
           </Link>
         </div>
       </section>
 
       {/* footer */}
-      <footer className="border-t border-line bg-surface/40">
+      <footer className="border-t border-line bg-surface">
         <div className="mx-auto max-w-6xl px-6 py-12">
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             <div>
@@ -289,30 +241,30 @@ export default function Landing() {
                 <span className="font-mono text-[12px] uppercase tracking-[0.15em] text-text">meridian</span>
               </div>
               <p className="text-[13px] leading-relaxed text-muted-text">
-                Multi-tenant, multi-agent customer support — built end to end on free-tier infrastructure.
+                Customer support answered from your own documents and order data — with a human in the
+                loop wherever it matters.
               </p>
             </div>
 
             <FooterCol
               title="Product"
               links={[
-                { label: "Live demo", href: "#demo" },
+                { label: "See it work", href: "#demo" },
                 { label: "Set it up", href: "#setup" },
-                { label: "Gating", href: "#gating" },
-                { label: "Platform", href: "#platform" },
+                { label: "Why it's safe", href: "#safety" },
+                { label: "The numbers", href: "#numbers" },
               ]}
             />
             <FooterCol
-              title="The console"
+              title="Try it"
               links={[
-                { label: "Chat playground", href: "/demo" },
-                { label: "Traces", href: "/demo" },
-                { label: "Relay inbox", href: "/demo" },
-                { label: "Evaluation", href: "/demo" },
+                { label: "Open the demo", href: "/demo" },
+                { label: "Kite & Co — retail", href: "/demo" },
+                { label: "Nimbus Health — pharmacy", href: "/demo" },
               ]}
             />
             <FooterCol
-              title="Engineering"
+              title="For engineers"
               links={[
                 { label: "Source on GitHub", href: "https://github.com/ANSHUUMAAN5/meridian" },
                 { label: "Decision records", href: "https://github.com/ANSHUUMAAN5/meridian/tree/main/docs/adr" },
@@ -322,9 +274,9 @@ export default function Landing() {
           </div>
 
           <div className="mt-10 border-t border-line pt-6">
-            <p className="font-mono text-[10.5px] text-faint-text">
-              Kite &amp; Co and Nimbus Health are fictional demo tenants. Their documents and orders were
-              written for this project.
+            <p className="text-[12px] text-faint-text">
+              Kite &amp; Co and Nimbus Health are fictional companies built to demonstrate this. Their
+              documents and orders were written for the project.
             </p>
           </div>
         </div>
@@ -335,19 +287,19 @@ export default function Landing() {
 
 function Section({
   id,
-  eyebrow,
   title,
   lede,
+  bg,
   children,
 }: {
   id: string;
-  eyebrow: string;
   title: string;
   lede: string;
+  bg?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-16 border-t border-line px-6 py-20">
+    <section id={id} className="scroll-mt-16 px-6 py-20" style={bg ? { background: bg } : undefined}>
       <div className="mx-auto max-w-6xl">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -356,13 +308,8 @@ function Section({
           transition={{ duration: 0.45 }}
           className="mb-10 max-w-2xl"
         >
-          <p className="mb-3 font-mono text-[10.5px] uppercase tracking-[0.16em] text-faint-text">
-            {eyebrow}
-          </p>
-          <h2 className="mb-4 text-[30px] font-semibold leading-[1.15] tracking-tight text-text">
-            {title}
-          </h2>
-          <p className="text-[15px] leading-relaxed text-muted-text">{lede}</p>
+          <h2 className="mb-4 text-[30px] font-semibold leading-[1.15] tracking-tight text-text">{title}</h2>
+          <p className="text-[15.5px] leading-relaxed text-muted-text">{lede}</p>
         </motion.div>
         {children}
       </div>
@@ -373,7 +320,7 @@ function Section({
 function FooterCol({ title, links }: { title: string; links: { label: string; href: string }[] }) {
   return (
     <div>
-      <p className="mb-3 font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint-text">{title}</p>
+      <p className="mb-3 text-[13px] font-semibold text-text">{title}</p>
       <ul className="flex flex-col gap-2">
         {links.map((l) => (
           <li key={l.label}>

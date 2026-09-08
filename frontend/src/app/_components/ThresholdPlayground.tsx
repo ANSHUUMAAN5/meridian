@@ -23,34 +23,40 @@ const CASES: Case[] = [
   { message: "asdkjfh random gibberish message that means nothing", tenant: "Kite", intent: "ambiguous", confidence: 0.2, tier: "read" },
 ];
 
+const TIER_LABEL: Record<Case["tier"], string> = {
+  read: "just answering",
+  write: "changes an order",
+  hard: "never automated",
+};
+
 function outcome(c: Case, tau: number): { label: string; color: string; why: string } {
   if (c.tier === "hard") {
-    return { label: "human", color: "var(--danger)", why: "hard rule — never automated" };
+    return { label: "asks a person", color: "var(--danger)", why: "this kind of question is never answered alone" };
   }
   if (c.confidence < tau) {
-    return { label: "human", color: "var(--beacon)", why: "below the line" };
+    return { label: "asks a person", color: "var(--beacon)", why: "not sure enough" };
   }
   if (c.tier === "write") {
-    return { label: "confirm first", color: "var(--compass)", why: "write action — needs your yes" };
+    return { label: "checks with you", color: "var(--compass)", why: "it would change an order, so it asks first" };
   }
-  return { label: "answered", color: "var(--manifest)", why: "cleared the line" };
+  return { label: "answers", color: "var(--manifest)", why: "sure enough to answer on its own" };
 }
 
 export default function ThresholdPlayground() {
   const [tau, setTau] = useState(0.75);
 
-  const answered = CASES.filter((c) => outcome(c, tau).label === "answered").length;
-  const confirmed = CASES.filter((c) => outcome(c, tau).label === "confirm first").length;
-  const human = CASES.filter((c) => outcome(c, tau).label === "human").length;
+  const answered = CASES.filter((c) => outcome(c, tau).label === "answers").length;
+  const confirmed = CASES.filter((c) => outcome(c, tau).label === "checks with you").length;
+  const human = CASES.filter((c) => outcome(c, tau).label === "asks a person").length;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface">
       <div className="border-b border-line px-5 py-5">
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <label htmlFor="tau" className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-faint-text">
-            drag the line — τ_route
+          <label htmlFor="tau" className="text-[13.5px] text-muted-text">
+            How sure does it need to be before answering on its own?
           </label>
-          <span className="font-mono text-2xl tabular-nums text-text">{tau.toFixed(2)}</span>
+          <span className="font-mono text-2xl tabular-nums text-text">{Math.round(tau * 100)}%</span>
         </div>
 
         <input
@@ -64,10 +70,10 @@ export default function ThresholdPlayground() {
           className="w-full accent-[var(--text)]"
         />
 
-        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 font-mono text-[11px]">
-          <span style={{ color: "var(--manifest)" }}>{answered} answered alone</span>
-          <span style={{ color: "var(--compass)" }}>{confirmed} need confirmation</span>
-          <span style={{ color: "var(--beacon)" }}>{human} go to a human</span>
+        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-[13px]">
+          <span style={{ color: "var(--manifest)" }}>{answered} answered on its own</span>
+          <span style={{ color: "var(--compass)" }}>{confirmed} check with you first</span>
+          <span style={{ color: "var(--beacon)" }}>{human} go to a person</span>
         </div>
       </div>
 
@@ -78,8 +84,8 @@ export default function ThresholdPlayground() {
             <div key={c.message} className="flex items-center gap-3 px-5 py-3">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[13.5px] text-text">{c.message}</p>
-                <p className="font-mono text-[10.5px] text-faint-text">
-                  {c.tenant} · {c.intent} · {c.tier} tier
+                <p className="text-[11.5px] text-faint-text">
+                  {c.tenant} · {TIER_LABEL[c.tier]}
                 </p>
               </div>
 

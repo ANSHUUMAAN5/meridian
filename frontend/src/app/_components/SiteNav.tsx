@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 const LINKS = [
-  { href: "#demo", label: "Live demo" },
+  { href: "#demo", label: "See it work" },
   { href: "#setup", label: "Set it up" },
-  { href: "#gating", label: "Gating" },
-  { href: "#platform", label: "Platform" },
-  { href: "#evidence", label: "Evidence" },
+  { href: "#safety", label: "Why it's safe" },
+  { href: "#team", label: "The team" },
+  { href: "#numbers", label: "The numbers" },
 ];
 
 export default function SiteNav() {

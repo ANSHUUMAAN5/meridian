@@ -2,25 +2,31 @@
 @import "tw-animate-css";
 
 :root {
-  --canvas: #f1ead9;
-  --surface: #faf6ec;
-  --surface-raised: #ffffff;
-  --line: rgba(40, 36, 29, 0.14);
-  --line-strong: rgba(40, 36, 29, 0.26);
-  --text: #28241d;
-  --muted-text: #7c7361;
-  --faint-text: #9a9182;
+  --canvas: #faf3ec;
+  --surface: #fffbf6;
+  --surface-raised: #fffdfa;
 
-  --compass: #7a5c6e;
-  --almanac: #3f6b7a;
-  --manifest: #4b6c3a;
-  --beacon: #b8792e;
-  --danger: #a34632;
+  --panel-sand: #f4e4d3;
+  --panel-sage: #e3ece1;
+  --panel-sky: #dfe9f1;
+  --panel-blush: #f7e3dd;
 
-  --accent-rare: #7c6bff;
+  --line: rgba(42, 35, 29, 0.12);
+  --line-strong: rgba(42, 35, 29, 0.24);
+  --text: #2a231d;
+  --muted-text: #7a6e62;
+  --faint-text: #a99b8c;
 
-  --confidence-low: #b8792e;
-  --confidence-high: #4b6c3a;
+  --compass: #7b5ea7;
+  --almanac: #2e7da8;
+  --manifest: #4a8b54;
+  --beacon: #d08a2c;
+  --danger: #c4553d;
+
+  --accent-rare: #7b5ea7;
+
+  --confidence-low: #d08a2c;
+  --confidence-high: #4a8b54;
 
   --background: var(--canvas);
   --foreground: var(--text);
@@ -47,6 +53,10 @@
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);
   --color-surface-raised: var(--surface-raised);
+  --color-panel-sand: var(--panel-sand);
+  --color-panel-sage: var(--panel-sage);
+  --color-panel-sky: var(--panel-sky);
+  --color-panel-blush: var(--panel-blush);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
   --color-text: var(--text);

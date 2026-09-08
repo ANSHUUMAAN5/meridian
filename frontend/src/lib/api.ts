@@ -118,6 +118,35 @@ export function claimEscalation(token: string, id: string): Promise<EscalationOu
   return request(`/escalations/${id}/claim`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
 }
 
+export type DocumentOut = {
+  id: string;
+  title: string;
+  source: string | null;
+  status: string;
+  chunk_count: number;
+  uploaded_at: string;
+};
+
+export function listDocuments(token: string): Promise<DocumentOut[]> {
+  return request("/documents", { headers: { Authorization: `Bearer ${token}` } });
+}
+
+export async function uploadDocument(token: string, title: string, file: File): Promise<DocumentOut> {
+  const form = new FormData();
+  form.append("title", title);
+  form.append("file", file);
+  const res = await fetch(`${API_URL}/documents`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new ApiError(res.status, body.detail ?? res.statusText);
+  }
+  return res.json();
+}
+
 export function resolveEscalation(token: string, id: string, resolutionNote: string): Promise<EscalationOut> {
   return request(`/escalations/${id}/resolve`, {
     method: "POST",

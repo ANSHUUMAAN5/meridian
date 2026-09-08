@@ -5,7 +5,7 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
-from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, text
@@ -15,7 +15,8 @@ from app.orchestrator import handle_message
 from app.auth import create_token
 from app.config import get_settings
 from app.db.base import get_engine, get_sessionmaker
-from app.db.models import AgentTrace, Conversation, Escalation, Message, Order, Tenant, User
+from app.db.models import AgentTrace, Chunk, Conversation, Document, Escalation, Message, Order, Tenant, User
+from app.rag.ingest import ingest_document
 from app.deps import Principal, current_principal, tenant_session
 from app.providers import get_provider
 
@@ -444,4 +445,70 @@ async def resolve_escalation(
         confidence=escalation.confidence, status=escalation.status,
         assigned_to=str(escalation.assigned_to), resolution_note=escalation.resolution_note,
         resolved_at=escalation.resolved_at, created_at=escalation.created_at,
+    )
+
+
+class DocumentOut(BaseModel):
+    id: str
+    title: str
+    source: str | None
+    status: str
+    chunk_count: int
+    uploaded_at: datetime
+
+
+@app.get("/documents", response_model=list[DocumentOut], tags=["knowledge"])
+async def list_documents(
+    principal: Principal = Depends(current_principal),
+    session: AsyncSession = Depends(tenant_session),
+) -> list[DocumentOut]:
+    documents = (
+        await session.execute(select(Document).order_by(Document.uploaded_at.desc()))
+    ).scalars().all()
+
+    results = []
+    for d in documents:
+        chunk_count = (
+            await session.execute(
+                select(func.count()).select_from(Chunk).where(Chunk.document_id == d.id)
+            )
+        ).scalar_one()
+        results.append(
+            DocumentOut(
+                id=str(d.id), title=d.title, source=d.source, status=d.status,
+                chunk_count=chunk_count, uploaded_at=d.uploaded_at,
+            )
+        )
+    return results
+
+
+MAX_UPLOAD_BYTES = 500_000
+
+
+@app.post("/documents", response_model=DocumentOut, tags=["knowledge"])
+async def upload_document(
+    title: str = Form(..., min_length=1, max_length=400),
+    file: UploadFile = File(...),
+    principal: Principal = Depends(current_principal),
+    session: AsyncSession = Depends(tenant_session),
+) -> DocumentOut:
+    if file.content_type not in ("text/plain", "text/markdown", "application/octet-stream", None):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "only plain text or markdown files are supported right now")
+
+    raw = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"file exceeds the {MAX_UPLOAD_BYTES // 1000}KB limit")
+    try:
+        text_content = raw.decode("utf-8")
+    except UnicodeDecodeError as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "file must be UTF-8 text") from e
+
+    result = await ingest_document(
+        session, tenant_id=principal.tenant_id, title=title, text=text_content, source=file.filename,
+    )
+
+    document = (await session.execute(select(Document).where(Document.id == result.document_id))).scalar_one()
+    return DocumentOut(
+        id=str(document.id), title=document.title, source=document.source, status=document.status,
+        chunk_count=result.chunks, uploaded_at=document.uploaded_at,
     )

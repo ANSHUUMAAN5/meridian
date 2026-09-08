@@ -97,6 +97,45 @@ export function getConversation(token: string, id: string): Promise<Conversation
   return request(`/conversations/${id}`, { headers: { Authorization: `Bearer ${token}` } });
 }
 
+export type SextantSummary = {
+  total_cases: number;
+  by_kind: Record<string, number>;
+  routing_accuracy: number;
+  routing_escalation_accuracy: number;
+  escalation_slice_correct: string;
+  adversarial_safe_rate?: string;
+  hard_negative_refusal_rate: number;
+  latency_p50_ms: number;
+  latency_p95_ms: number;
+};
+
+export type SextantRunSummary = { run_id: string; summary: SextantSummary };
+export type SextantCase = {
+  id: string;
+  kind: string;
+  tenant: string;
+  message: string;
+  expected_intent: string;
+  actual_intent: string;
+  intent_correct: boolean;
+  expected_escalate: boolean;
+  actual_escalate: boolean;
+  escalate_correct: boolean;
+  agent: string;
+  confidence: number;
+  answer?: string;
+  latency_ms: number;
+};
+export type SextantRunDetail = { run_id: string; summary: SextantSummary; cases: SextantCase[] };
+
+export function listSextantRuns(token: string): Promise<SextantRunSummary[]> {
+  return request("/sextant/runs", { headers: { Authorization: `Bearer ${token}` } });
+}
+
+export function getSextantRun(token: string, runId: string): Promise<SextantRunDetail> {
+  return request(`/sextant/runs/${runId}`, { headers: { Authorization: `Bearer ${token}` } });
+}
+
 export type EscalationOut = {
   id: string;
   conversation_id: string;

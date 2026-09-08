@@ -10,6 +10,7 @@ const NAV = [
   { href: "/console/traces", label: "traces" },
   { href: "/console/relay", label: "relay" },
   { href: "/console/knowledge", label: "knowledge" },
+  { href: "/console/sextant", label: "sextant" },
 ];
 
 export default function ConsoleLayout({ children }: { children: React.ReactNode }) {

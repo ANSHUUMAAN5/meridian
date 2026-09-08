@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -512,3 +514,46 @@ async def upload_document(
         id=str(document.id), title=document.title, source=document.source, status=document.status,
         chunk_count=result.chunks, uploaded_at=document.uploaded_at,
     )
+
+
+SEXTANT_RESULTS_DIR = Path(__file__).resolve().parents[2] / "sextant" / "results"
+
+
+def _sextant_files() -> list[Path]:
+    if not SEXTANT_RESULTS_DIR.exists():
+        return []
+    return sorted(SEXTANT_RESULTS_DIR.glob("*.json"), key=lambda p: p.name, reverse=True)
+
+
+class SextantRunSummary(BaseModel):
+    run_id: str
+    summary: dict
+
+
+@app.get("/sextant/runs", response_model=list[SextantRunSummary], tags=["sextant"])
+async def list_sextant_runs(principal: Principal = Depends(current_principal)) -> list[SextantRunSummary]:
+    runs = []
+    for f in _sextant_files():
+        try:
+            data = json.loads(f.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        runs.append(SextantRunSummary(run_id=f.stem, summary=data.get("summary", {})))
+    return runs
+
+
+class SextantRunDetail(BaseModel):
+    run_id: str
+    summary: dict
+    cases: list[dict]
+
+
+@app.get("/sextant/runs/{run_id}", response_model=SextantRunDetail, tags=["sextant"])
+async def get_sextant_run(run_id: str, principal: Principal = Depends(current_principal)) -> SextantRunDetail:
+    if "/" in run_id or ".." in run_id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "invalid run id")
+    path = SEXTANT_RESULTS_DIR / f"{run_id}.json"
+    if not path.exists():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "no such Sextant run")
+    data = json.loads(path.read_text())
+    return SextantRunDetail(run_id=run_id, summary=data.get("summary", {}), cases=data.get("cases", []))

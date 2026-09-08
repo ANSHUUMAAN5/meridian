@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { demoLogin, ApiError } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
@@ -10,20 +11,38 @@ const DEMO_TENANTS = [
   {
     slug: "kite",
     name: "Kite & Co",
-    blurb: "Apparel retailer",
-    detail: "Returns, sizing, shipping — and a refund it can actually approve, with your say-so.",
-    accent: "var(--compass)",
+    kind: "Clothing retailer",
+    photo:
+      "https://images.unsplash.com/photo-1769107805465-bfd41863f1a0?fm=jpg&q=80&w=1000&auto=format&fit=crop",
+    pitch:
+      "Returns, sizing and delivery — plus a refund it can actually process, once you confirm it.",
+    tint: "var(--panel-sage)",
+    accent: "var(--manifest)",
+    tryThese: [
+      "How long do I have to return something?",
+      "Where is my order KC4407?",
+      "I want a refund for order KC4407",
+    ],
   },
   {
     slug: "nimbus",
     name: "Nimbus Health",
-    blurb: "Online pharmacy",
-    detail: "Prescriptions, refills — and one hard rule: medical questions never get answered alone.",
+    kind: "Online pharmacy",
+    photo:
+      "https://images.unsplash.com/photo-1580281657527-47f249e8f4df?fm=jpg&q=80&w=1000&auto=format&fit=crop",
+    pitch:
+      "Prescriptions and refills — with one rule that never bends: nothing medical is ever answered without a person.",
+    tint: "var(--panel-sky)",
     accent: "var(--almanac)",
+    tryThese: [
+      "Can I get my prescription refilled early?",
+      "Can I take double the dose if I missed one?",
+      "How do I store my medicine?",
+    ],
   },
 ];
 
-export default function Home() {
+export default function DemoPicker() {
   const router = useRouter();
   const { setSession } = useSession();
   const [pending, setPending] = useState<string | null>(null);
@@ -38,87 +57,84 @@ export default function Home() {
       router.push("/console/chat");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Could not reach the Meridian API.");
-    } finally {
       setPending(null);
     }
   }
 
   return (
-    <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden bg-canvas px-6">
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="relative z-10 w-full max-w-xl"
-      >
-        <div className="mb-12 text-center">
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1, duration: 0.4 }}
-            className="mb-4 font-mono text-[11px] uppercase tracking-[0.2em] text-faint-text"
-          >
-            multi-tenant · multi-agent · confidence-gated
-          </motion.p>
-          <h1 className="text-5xl font-semibold tracking-tight text-text">Meridian</h1>
-
-          <div className="relative my-6 flex items-center justify-center">
-            <div className="h-px w-full max-w-[280px] bg-gradient-to-r from-transparent via-line-strong to-transparent" />
-            <motion.div
-              className="absolute h-1.5 w-1.5 rounded-full bg-text"
-              animate={{ left: ["18%", "82%", "18%"] }}
-              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            />
-          </div>
-
-          <p className="text-[15px] leading-relaxed text-muted-text">
-            Above the line, the system answers on its own.
-            <br />
-            Below it, a human takes over. Pick a company to watch it happen.
-          </p>
+    <div className="flex flex-1 flex-col bg-canvas">
+      <header className="border-b border-line">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+          <Link href="/" className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-text" />
+            <span className="font-mono text-[12px] uppercase tracking-[0.15em] text-text">meridian</span>
+          </Link>
+          <Link href="/" className="text-[13.5px] text-muted-text transition-colors hover:text-text">
+            ← Back to site
+          </Link>
         </div>
+      </header>
 
-        <div className="flex flex-col gap-3">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-14">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45 }}
+          className="mb-10 max-w-xl"
+        >
+          <h1 className="mb-3 text-[34px] font-semibold leading-tight tracking-tight text-text">
+            Pick a company to try
+          </h1>
+          <p className="text-[15.5px] leading-relaxed text-muted-text">
+            Both run on exactly the same system. Everything that makes them behave differently — their
+            documents, their orders, what they&apos;re allowed to decide alone — belongs to them.
+            No sign-up, nothing to install.
+          </p>
+        </motion.div>
+
+        <div className="grid gap-5 md:grid-cols-2">
           {DEMO_TENANTS.map((t, i) => (
-            <motion.button
+            <motion.div
               key={t.slug}
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 + i * 0.1, duration: 0.4, ease: "easeOut" }}
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.99 }}
-              disabled={pending !== null}
-              onClick={() => enterDemo(t.slug)}
-              className="group relative overflow-hidden rounded-xl border border-line bg-surface px-5 py-4 text-left transition-colors hover:border-line-strong disabled:opacity-60"
+              transition={{ duration: 0.45, delay: 0.1 + i * 0.1 }}
+              className="flex flex-col overflow-hidden rounded-3xl border border-line"
+              style={{ background: t.tint }}
             >
-              <div
-                className="absolute inset-x-0 top-0 h-[2px] opacity-70"
-                style={{ background: t.accent }}
-              />
-              <div className="flex items-baseline justify-between">
-                <span className="text-base font-medium text-text">{t.name}</span>
-                <span className="font-mono text-[11px] uppercase tracking-wider text-faint-text">
-                  {t.blurb}
+              <div className="relative h-44 overflow-hidden">
+                <img src={t.photo} alt="" className="h-full w-full object-cover" />
+                <span className="absolute left-4 top-4 rounded-full bg-canvas/90 px-3 py-1 text-[11.5px] font-medium text-text backdrop-blur-sm">
+                  {t.kind}
                 </span>
               </div>
-              <p className="mt-1.5 text-sm text-muted-text">{t.detail}</p>
-              <div className="mt-3 flex items-center gap-1.5 font-mono text-xs" style={{ color: t.accent }}>
-                {pending === t.slug ? (
-                  <span>entering…</span>
-                ) : (
-                  <>
-                    <span>enter as {t.name.toLowerCase()}</span>
-                    <motion.span
-                      className="inline-block"
-                      animate={{ x: [0, 3, 0] }}
-                      transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+
+              <div className="flex flex-1 flex-col p-6">
+                <h2 className="mb-2 text-[22px] font-semibold text-text">{t.name}</h2>
+                <p className="mb-5 text-[14px] leading-relaxed text-muted-text">{t.pitch}</p>
+
+                <p className="mb-2.5 text-[12px] font-medium text-muted-text">Things worth asking</p>
+                <ul className="mb-6 flex flex-col gap-1.5">
+                  {t.tryThese.map((q) => (
+                    <li
+                      key={q}
+                      className="rounded-xl border border-line bg-surface px-3.5 py-2 text-[13px] text-text"
                     >
-                      →
-                    </motion.span>
-                  </>
-                )}
+                      {q}
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  disabled={pending !== null}
+                  onClick={() => enterDemo(t.slug)}
+                  className="mt-auto rounded-full px-5 py-3 text-[14px] font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{ background: "var(--text)" }}
+                >
+                  {pending === t.slug ? "Opening…" : `Enter as ${t.name}`}
+                </button>
               </div>
-            </motion.button>
+            </motion.div>
           ))}
         </div>
 
@@ -126,12 +142,25 @@ export default function Home() {
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="mt-4 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger"
+            className="mt-6 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger"
           >
             {error}
           </motion.p>
         )}
-      </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="mt-10 rounded-2xl border border-line bg-surface px-6 py-5"
+        >
+          <p className="text-[14px] leading-relaxed text-muted-text">
+            <span className="font-medium text-text">Try to catch it out.</span> Ask the pharmacy
+            something medical and it will refuse, no matter how confidently it could have guessed. Ask
+            either one something vague and watch it pass you to a person instead of inventing an answer.
+          </p>
+        </motion.div>
+      </main>
     </div>
   );
 }

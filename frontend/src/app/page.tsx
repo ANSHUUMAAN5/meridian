@@ -77,28 +77,43 @@ export default function Landing() {
       </div>
 
       {/* hero */}
-      <section className="relative overflow-hidden px-6 py-20">
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(600px 380px at 20% 10%, color-mix(in srgb, var(--accent-rare) 14%, transparent), transparent 70%)",
-          }}
-        />
-        <div className="relative z-10 mx-auto grid max-w-6xl gap-12 lg:grid-cols-2 lg:items-center">
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+      <section className="relative overflow-hidden lg:min-h-[680px]">
+        <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[58%] lg:block">
+          <img
+            src="https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?fm=jpg&q=80&w=1800&auto=format&fit=crop"
+            alt=""
+            className="h-full w-full object-cover"
+            style={{ objectPosition: "60% 45%" }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(to right, var(--canvas) 0%, color-mix(in srgb, var(--canvas) 55%, transparent) 22%, transparent 48%)" }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--canvas) 55%, transparent), transparent 40%)" }}
+          />
+        </div>
+
+        <div className="relative z-10 mx-auto max-w-6xl px-6 py-16 lg:py-24">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="max-w-xl"
+          >
             <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.2em] text-faint-text">
               multi-tenant · multi-agent · confidence-gated
             </p>
             <h1 className="mb-5 text-5xl font-semibold tracking-tight text-text">
-              Route every question to the right specialist.
+              A support agent for every customer.
               <br />
-              <span className="text-muted-text">Know exactly when not to.</span>
+              <span className="text-muted-text">Confident enough to answer, honest enough to say when it can&apos;t.</span>
             </h1>
             <p className="mb-8 max-w-md text-[15px] leading-relaxed text-muted-text">
-              Meridian answers support questions from a company&apos;s own documents and order data, hands
-              anything risky or unclear to a human, and records every decision it makes — with the numbers
-              to prove how often it gets it right.
+              Meridian reads the question, picks the specialist who actually knows the answer — from a
+              company&apos;s own documents, or its order data — and hands anything risky to a person instead
+              of guessing. Every one of those decisions is logged and measured, not just claimed.
             </p>
             <div className="flex items-center gap-4">
               <Link
@@ -113,9 +128,23 @@ export default function Landing() {
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.15 }}>
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mt-10 max-w-md lg:absolute lg:right-8 lg:bottom-0 lg:mt-0 lg:w-[380px] xl:right-16"
+          >
             <HeroRouting />
           </motion.div>
+        </div>
+
+        <div className="lg:hidden">
+          <img
+            src="https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?fm=jpg&q=80&w=1200&auto=format&fit=crop"
+            alt=""
+            className="h-48 w-full object-cover"
+            style={{ objectPosition: "50% 45%" }}
+          />
         </div>
       </section>
 

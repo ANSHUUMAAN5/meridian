@@ -70,7 +70,7 @@ function EscalationCard({
         </div>
         <Link
           href={`/console/traces/${escalation.conversation_id}`}
-          className="font-mono text-[11px] text-compass hover:opacity-80"
+          className="font-mono text-[11px] text-text underline decoration-line hover:decoration-text"
         >
           view conversation →
         </Link>
@@ -90,7 +90,7 @@ function EscalationCard({
           {escalation.status === "open" && (
             <button
               onClick={() => onClaim(escalation.id)}
-              className="rounded-md border border-line px-3 py-1.5 font-mono text-[11px] text-text transition-colors hover:border-line-strong"
+              className="rounded-full border border-line px-3 py-1.5 font-mono text-[11px] text-text transition-colors hover:border-line-strong"
             >
               claim
             </button>
@@ -98,7 +98,7 @@ function EscalationCard({
           {!resolving ? (
             <button
               onClick={() => setResolving(true)}
-              className="rounded-md bg-manifest px-3 py-1.5 font-mono text-[11px] text-white transition-opacity hover:opacity-90"
+              className="rounded-full bg-manifest px-3 py-1.5 font-mono text-[11px] text-canvas transition-opacity hover:opacity-90"
             >
               resolve
             </button>
@@ -109,7 +109,7 @@ function EscalationCard({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="What did you tell the customer?"
-                className="flex-1 rounded-md border border-line bg-surface-raised px-2.5 py-1.5 text-sm text-text outline-none focus:border-compass/50"
+                className="flex-1 rounded-full border border-line bg-surface-raised px-3.5 py-1.5 text-sm text-text outline-none focus:border-text/40"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && note.trim()) onResolve(escalation.id, note);
                 }}
@@ -117,7 +117,7 @@ function EscalationCard({
               <button
                 disabled={!note.trim()}
                 onClick={() => onResolve(escalation.id, note)}
-                className="rounded-md bg-manifest px-3 py-1.5 font-mono text-[11px] text-white disabled:opacity-40"
+                className="rounded-full bg-manifest px-3 py-1.5 font-mono text-[11px] text-canvas disabled:opacity-40"
               >
                 submit
               </button>
@@ -172,7 +172,7 @@ export default function RelayPage() {
               key={t}
               onClick={() => setTab(t)}
               className={`border-b-2 px-3 py-2 font-mono text-xs uppercase tracking-wider transition-colors ${
-                tab === t ? "border-compass text-text" : "border-transparent text-muted-text hover:text-text"
+                tab === t ? "border-text text-text" : "border-transparent text-muted-text hover:text-text"
               }`}
             >
               {t}

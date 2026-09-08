@@ -62,7 +62,7 @@ export default function HeroRouting() {
   const fillPct = phase >= 2 ? loop.confidence * 100 : 0;
 
   return (
-    <div className="mx-auto w-full max-w-xl rounded-2xl border border-line/60 bg-surface/70 p-5 backdrop-blur-md shadow-[0_20px_50px_-20px_rgba(40,36,29,0.25)]">
+    <div className="mx-auto w-full max-w-xl rounded-2xl border border-white/50 bg-[color-mix(in_srgb,var(--surface)_88%,transparent)] p-5 backdrop-blur-xl shadow-[0_24px_60px_-16px_rgba(40,36,29,0.35)]">
       <div className="mb-4 flex items-center justify-between">
         <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-faint-text">live routing demo</p>
         <div className="flex gap-1">
@@ -77,20 +77,17 @@ export default function HeroRouting() {
       </div>
 
       <div className="min-h-[220px]">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`${loopIndex}-msg`}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="mb-4 flex justify-end"
-          >
-            <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-compass px-3.5 py-2 text-[13.5px] text-white">
-              {loop.message}
-            </div>
-          </motion.div>
-        </AnimatePresence>
+        <motion.div
+          key={`${loopIndex}-msg`}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="mb-4 flex justify-end"
+        >
+          <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-compass px-3.5 py-2 text-[13.5px] text-white">
+            {loop.message}
+          </div>
+        </motion.div>
 
         <div className="mb-4 flex items-center gap-2">
           <motion.span

@@ -17,11 +17,23 @@ Choose exactly one intent from this list:
 
 - policy_question: about a policy, rule, or general information found in documents
   (returns, refunds, shipping, sizing, hours, etc).
-- order_status: asking about the status, contents, or delivery of an existing order.
+- order_status: asking about the status, contents, or delivery of an existing
+  order. This also covers anything that needs their own order history looked
+  up — "what did I order last", "show me my recent orders", "find me something
+  similar to what I bought". Route these here even if the answer turns out to
+  be that we cannot search products, because reaching the customer's orders is
+  what the question needs.
 - cancel_order: explicitly asking to cancel an order.
 - refund_request: explicitly asking for money back, a refund, or compensation.
+- exchange_order: asking for a replacement, a different size or colour, or to
+  swap an item — they want the goods put right, not their money back. "send me
+  another one", "can I exchange this", "I want it replaced" all belong here.
+  If they ask for money back instead, that is refund_request.
 - change_address: asking to change a delivery address.
 - out_of_scope: about something this business does not do or sell.
+- closing_remark: the customer is thanking you, signing off, or saying they
+  need nothing further ("thanks", "that's all", "no need", "bye"). There is no
+  new request to handle — the conversation is ending.
 - ambiguous: too vague, incomplete, or unclear to classify confidently — this
   includes hostile or emotional messages with no clear request attached.
 - medical_question: asking for medical advice — whether to take a medicine,

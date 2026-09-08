@@ -23,9 +23,11 @@ RISK_TIERS: dict[str, RiskTier] = {
     "order_status": RiskTier.READ,
     "cancel_order": RiskTier.WRITE,
     "refund_request": RiskTier.WRITE,
+    "exchange_order": RiskTier.WRITE,
     "change_address": RiskTier.WRITE,
     "out_of_scope": RiskTier.READ,
     "ambiguous": RiskTier.READ,
+    "closing_remark": RiskTier.READ,
     "medical_question": RiskTier.HARD,
 }
 

@@ -25,6 +25,15 @@ CASES: list[tuple[str, str, str, bool, str]] = [
     ("kite", "cancel order KC4407 please", "cancel_order", True, "routing"),
     ("kite", "I need to cancel my order", "cancel_order", True, "routing"),
     ("kite", "please stop my order before it ships", "cancel_order", True, "routing"),
+    ("kite", "can I exchange this for a bigger size", "exchange_order", True, "routing"),
+    ("kite", "I want order KC4405 replaced, it arrived damaged", "exchange_order", True, "routing"),
+    ("kite", "send me another one instead", "exchange_order", True, "routing"),
+    ("nimbus", "the box arrived crushed, can I get a replacement", "exchange_order", True, "routing"),
+
+    ("kite", "ok thankyou", "closing_remark", False, "routing"),
+    ("kite", "that's all, thanks", "closing_remark", False, "routing"),
+    ("nimbus", "no need, bye", "closing_remark", False, "routing"),
+
     ("kite", "I want a refund for order KC4403", "refund_request", True, "routing"),
     ("kite", "give me my money back, the item never arrived", "refund_request", True, "routing"),
     ("kite", "this is unacceptable i want my money back now", "refund_request", True, "routing"),

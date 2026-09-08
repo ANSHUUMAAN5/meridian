@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import random
 import re
 from dataclasses import dataclass
 
@@ -8,38 +7,8 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AgentTrace, Escalation
+from app import replies
 from app.threshold import Gate
-
-REPLIES_BY_CONTEXT: dict[str, tuple[str, ...]] = {
-    "human_requested": (
-        "Of course — connecting you with someone from our team right now.",
-        "No problem at all, I'll get you a real person straight away.",
-    ),
-    "hard_tier": (
-        "That's really a question for a pharmacist or doctor, not me — I'm bringing in our team so you get a proper answer.",
-        "I can't advise on that safely myself, so let me get someone qualified to help with this one.",
-    ),
-    "write_tier_risk": (
-        "This one needs a second pair of eyes before it happens — I'm handing it to our team now.",
-        "I'd rather have a person confirm this before it goes through — connecting you now.",
-    ),
-    "ungrounded_answer": (
-        "I couldn't find a solid answer to that in what I have access to, so let me get someone from our team who can dig in properly.",
-        "I don't want to guess on this one — bringing in a person who'll actually know.",
-    ),
-    "repeated_failure": (
-        "I don't think I'm getting you what you need here — let me hand this straight to someone on our team.",
-        "Let's not go back and forth any more on this — connecting you with a person now.",
-    ),
-    "low_confidence": (
-        "I want to make sure I get this right for you, so I'm bringing in someone from our team.",
-        "I'm not fully certain on this one — let me connect you with someone who will be.",
-    ),
-}
-
-_DEFAULT_REPLIES = (
-    "I want to make sure this is handled correctly, so I'm connecting you with someone from our team who can help.",
-)
 
 _HUMAN_REQUEST_PATTERNS = re.compile(
     r"\b(talk|speak) to (a |an )?(human|person|agent|someone)\b"
@@ -97,9 +66,31 @@ class EscalationResult:
     customer_reply: str
 
 
-def _pick_reply(context: str | None) -> str:
-    bucket = REPLIES_BY_CONTEXT.get(context or "", _DEFAULT_REPLIES)
-    return random.choice(bucket)
+SITUATIONS = {
+    "human_requested": "The customer asked to speak to a person. You are passing them to one now.",
+    "hard_tier": (
+        "The customer asked something this company never answers automatically, because "
+        "getting it wrong could hurt them. Say plainly that this needs a qualified person, "
+        "and that you are bringing one in. Do not attempt any part of the answer yourself."
+    ),
+    "write_tier_risk": (
+        "The customer wants something changed on their account that you are not able to do "
+        "on your own here. Say so, and that a colleague will pick it up."
+    ),
+    "ungrounded_answer": (
+        "You could not find solid support for an answer in the company's own material, so "
+        "you are not going to guess. Say that you would rather be sure, and that someone is "
+        "taking a look."
+    ),
+    "repeated_failure": (
+        "This conversation has gone several turns without resolving. Acknowledge that plainly "
+        "and say you are bringing in a person rather than going round again."
+    ),
+    "low_confidence": (
+        "You are not confident you understood what the customer needs well enough to act. "
+        "Say you would rather someone got it right, and that you are handing it over."
+    ),
+}
 
 
 async def escalate(
@@ -109,6 +100,8 @@ async def escalate(
     customer_message: str,
     gate: Gate,
     context: str | None = None,
+    tenant_name: str = "this company",
+    history: str = "",
 ) -> EscalationResult:
     summary = await _build_handoff_summary(session, conversation_id, gate.reason)
 
@@ -131,6 +124,15 @@ async def escalate(
     session.add(row)
     await session.flush()
 
+    completion = await replies.compose(
+        tenant_name=tenant_name,
+        situation=SITUATIONS.get(context or "", SITUATIONS["low_confidence"]),
+        customer_message=customer_message,
+        history=history,
+    )
+
     return EscalationResult(
-        escalation_id=str(row.id), customer_message=customer_message, customer_reply=_pick_reply(context),
+        escalation_id=str(row.id),
+        customer_message=customer_message,
+        customer_reply=completion.text.strip(),
     )

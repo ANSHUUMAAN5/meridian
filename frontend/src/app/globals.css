@@ -1,26 +1,26 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is([data-theme="dark"] *));
-
 :root {
-  --canvas: #0b0d0f;
-  --surface: #14181c;
-  --surface-raised: #181d22;
-  --line: #232a31;
-  --line-strong: #333c44;
-  --text: #f2f5f7;
-  --muted-text: #9aa4ac;
-  --faint-text: #6e7880;
+  --canvas: #f1ead9;
+  --surface: #faf6ec;
+  --surface-raised: #ffffff;
+  --line: rgba(40, 36, 29, 0.14);
+  --line-strong: rgba(40, 36, 29, 0.26);
+  --text: #28241d;
+  --muted-text: #7c7361;
+  --faint-text: #9a9182;
 
-  --compass: #7c6bff;
-  --almanac: #3da9fc;
-  --manifest: #21c08b;
-  --beacon: #f5a524;
-  --danger: #f04438;
+  --compass: #7a5c6e;
+  --almanac: #3f6b7a;
+  --manifest: #4b6c3a;
+  --beacon: #b8792e;
+  --danger: #a34632;
 
-  --confidence-low: #f5a524;
-  --confidence-high: #21c08b;
+  --accent-rare: #7c6bff;
+
+  --confidence-low: #b8792e;
+  --confidence-high: #4b6c3a;
 
   --background: var(--canvas);
   --foreground: var(--text);
@@ -28,8 +28,8 @@
   --card-foreground: var(--text);
   --popover: var(--surface-raised);
   --popover-foreground: var(--text);
-  --primary: var(--compass);
-  --primary-foreground: var(--text);
+  --primary: var(--text);
+  --primary-foreground: var(--canvas);
   --secondary: var(--surface-raised);
   --secondary-foreground: var(--text);
   --muted: var(--surface-raised);
@@ -39,25 +39,8 @@
   --destructive: var(--danger);
   --border: var(--line);
   --input: var(--line);
-  --ring: var(--compass);
-  --radius: 0.625rem;
-}
-
-[data-theme="light"] {
-  --canvas: #f6f6f8;
-  --surface: #ffffff;
-  --surface-raised: #fbfbfc;
-  --line: #e2e2e8;
-  --line-strong: #cbcbd4;
-  --text: #15151c;
-  --muted-text: #5c5c6b;
-  --faint-text: #8b8b98;
-
-  --compass: #6a54e8;
-  --almanac: #0e7fd1;
-  --manifest: #0e8f66;
-  --beacon: #b4750b;
-  --danger: #d0281e;
+  --ring: var(--text);
+  --radius: 0.75rem;
 }
 
 @theme inline {
@@ -75,6 +58,7 @@
   --color-manifest: var(--manifest);
   --color-beacon: var(--beacon);
   --color-danger: var(--danger);
+  --color-accent-rare: var(--accent-rare);
 
   --color-confidence-low: var(--confidence-low);
   --color-confidence-high: var(--confidence-high);
@@ -114,7 +98,7 @@ body {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--compass) 25%, transparent);
+  background: color-mix(in srgb, var(--accent-rare) 18%, transparent);
   color: var(--text);
 }
 

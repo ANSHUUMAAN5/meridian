@@ -189,7 +189,7 @@ export default function ChatPage() {
             type="submit"
             disabled={sending || !input.trim()}
             whileTap={{ scale: 0.96 }}
-            className="rounded-md bg-compass px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+            className="rounded-full bg-text px-4 py-2 text-sm font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-40"
           >
             Send
           </motion.button>

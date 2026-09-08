@@ -30,7 +30,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
       <header className="flex flex-col gap-3 border-b border-line px-6 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
         <div className="flex items-center justify-between gap-5 sm:justify-start">
           <div className="flex min-w-0 items-center gap-2.5">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-compass" style={{ boxShadow: "0 0 8px 1px var(--compass)" }} />
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-text" />
             <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.15em] text-compass">meridian</span>
             <span className="shrink-0 text-sm text-faint-text">/</span>
             <span className="truncate text-sm text-text">{session.tenant.name}</span>

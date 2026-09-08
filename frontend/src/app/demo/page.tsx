@@ -45,16 +45,6 @@ export default function Home() {
 
   return (
     <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden bg-canvas px-6">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.4]"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, color-mix(in srgb, var(--line) 60%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--line) 60%, transparent) 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
-          maskImage: "radial-gradient(ellipse 60% 50% at 50% 40%, black 0%, transparent 75%)",
-        }}
-      />
-
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -75,8 +65,7 @@ export default function Home() {
           <div className="relative my-6 flex items-center justify-center">
             <div className="h-px w-full max-w-[280px] bg-gradient-to-r from-transparent via-line-strong to-transparent" />
             <motion.div
-              className="absolute h-1.5 w-1.5 rounded-full bg-compass"
-              style={{ boxShadow: "0 0 12px 2px var(--compass)" }}
+              className="absolute h-1.5 w-1.5 rounded-full bg-text"
               animate={{ left: ["18%", "82%", "18%"] }}
               transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
             />

@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { sendChatMessage, ApiError, type ChatResponse } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { TAU_ROUTE, agentStyle } from "@/lib/agents";
 
 type ChatMessage = {
   id: string;
@@ -12,17 +13,6 @@ type ChatMessage = {
   content: string;
   meta?: ChatResponse;
 };
-
-const AGENT_STYLE: Record<string, { color: string; label: string }> = {
-  compass: { color: "var(--compass)", label: "compass" },
-  almanac: { color: "var(--almanac)", label: "almanac" },
-  manifest: { color: "var(--manifest)", label: "manifest" },
-  beacon: { color: "var(--beacon)", label: "beacon" },
-  sentinel: { color: "var(--danger)", label: "sentinel" },
-  none: { color: "var(--faint-text)", label: "none" },
-};
-
-const TAU_ROUTE = 0.75;
 
 const EXAMPLES = [
   "How long do I have to return something?",
@@ -227,16 +217,13 @@ export default function ChatPage() {
                 <span
                   className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-xs"
                   style={{
-                    color: AGENT_STYLE[lastMeta.agent]?.color ?? AGENT_STYLE.none.color,
-                    borderColor: `color-mix(in srgb, ${AGENT_STYLE[lastMeta.agent]?.color ?? AGENT_STYLE.none.color} 35%, transparent)`,
-                    background: `color-mix(in srgb, ${AGENT_STYLE[lastMeta.agent]?.color ?? AGENT_STYLE.none.color} 12%, transparent)`,
+                    color: agentStyle(lastMeta.agent).color,
+                    borderColor: `color-mix(in srgb, ${agentStyle(lastMeta.agent).color} 35%, transparent)`,
+                    background: `color-mix(in srgb, ${agentStyle(lastMeta.agent).color} 12%, transparent)`,
                   }}
                 >
-                  <span
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{ background: AGENT_STYLE[lastMeta.agent]?.color ?? AGENT_STYLE.none.color }}
-                  />
-                  {AGENT_STYLE[lastMeta.agent]?.label ?? lastMeta.agent}
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: agentStyle(lastMeta.agent).color }} />
+                  {agentStyle(lastMeta.agent).label}
                 </span>
               </div>
 

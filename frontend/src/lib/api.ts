@@ -27,6 +27,44 @@ export type DemoLoginResponse = {
   customer_id: string | null;
 };
 
+export type ConversationSummary = {
+  id: string;
+  external_customer_id: string | null;
+  created_at: string;
+  message_count: number;
+  last_message_preview: string | null;
+  has_open_escalation: boolean;
+};
+
+export type MessageOut = {
+  id: string;
+  role: "customer" | "assistant" | "system";
+  content: string;
+  created_at: string;
+};
+
+export type TraceStepOut = {
+  step: number;
+  agent_name: string;
+  model: string | null;
+  input: Record<string, unknown>;
+  output: Record<string, unknown>;
+  confidence: number | null;
+  latency_ms: number | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  cost_usd: number | null;
+  created_at: string;
+};
+
+export type ConversationDetail = {
+  id: string;
+  external_customer_id: string | null;
+  created_at: string;
+  messages: MessageOut[];
+  traces: TraceStepOut[];
+};
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -49,6 +87,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export function demoLogin(tenant: string): Promise<DemoLoginResponse> {
   return request("/auth/demo", { method: "POST", body: JSON.stringify({ tenant }) });
+}
+
+export function listConversations(token: string): Promise<ConversationSummary[]> {
+  return request("/conversations", { headers: { Authorization: `Bearer ${token}` } });
+}
+
+export function getConversation(token: string, id: string): Promise<ConversationDetail> {
+  return request(`/conversations/${id}`, { headers: { Authorization: `Bearer ${token}` } });
 }
 
 export function sendChatMessage(

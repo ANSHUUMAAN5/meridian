@@ -3,18 +3,19 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.orchestrator import handle_message
 from app.auth import create_token
 from app.config import get_settings
 from app.db.base import get_engine, get_sessionmaker
-from app.db.models import Conversation, Message, Order, Tenant, User
+from app.db.models import AgentTrace, Conversation, Escalation, Message, Order, Tenant, User
 from app.deps import Principal, current_principal, tenant_session
 from app.providers import get_provider
 
@@ -23,8 +24,6 @@ logger = logging.getLogger("meridian.startup")
 
 
 async def _wait_for_database(attempts: int = 6, base_delay: float = 0.5) -> None:
-    from sqlalchemy import text
-
     last_exc: Exception | None = None
     for attempt in range(attempts):
         try:
@@ -65,8 +64,6 @@ app.add_middleware(
 
 @app.get("/health", tags=["ops"])
 async def health() -> dict:
-    from sqlalchemy import text
-
     checks: dict[str, str] = {}
     try:
         async with get_sessionmaker()() as s:
@@ -95,8 +92,6 @@ async def demo_login(body: DemoLogin) -> dict:
         ).scalar_one_or_none()
         if tenant is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "demo tenant not seeded")
-
-        from sqlalchemy import func, text
 
         await session.execute(
             text("select set_config('app.current_tenant', :t, true)"), {"t": str(tenant.id)}
@@ -227,5 +222,134 @@ async def chat(
                 similarity=c.similarity,
             )
             for c in result.citations
+        ],
+    )
+
+
+class ConversationSummary(BaseModel):
+    id: str
+    external_customer_id: str | None
+    created_at: datetime
+    message_count: int
+    last_message_preview: str | None
+    has_open_escalation: bool
+
+
+@app.get("/conversations", response_model=list[ConversationSummary], tags=["traces"])
+async def list_conversations(
+    principal: Principal = Depends(current_principal),
+    session: AsyncSession = Depends(tenant_session),
+) -> list[ConversationSummary]:
+    conversations = (
+        await session.execute(
+            select(Conversation).order_by(Conversation.created_at.desc()).limit(50)
+        )
+    ).scalars().all()
+
+    results = []
+    for c in conversations:
+        last_message = (
+            await session.execute(
+                select(Message)
+                .where(Message.conversation_id == c.id)
+                .order_by(Message.created_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        message_count = (
+            await session.execute(
+                select(func.count()).select_from(Message).where(Message.conversation_id == c.id)
+            )
+        ).scalar_one()
+        open_escalation = (
+            await session.execute(
+                select(Escalation.id)
+                .where(Escalation.conversation_id == c.id, Escalation.status.in_(("open", "claimed")))
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
+        results.append(
+            ConversationSummary(
+                id=str(c.id),
+                external_customer_id=c.external_customer_id,
+                created_at=c.created_at,
+                message_count=message_count,
+                last_message_preview=last_message.content[:140] if last_message else None,
+                has_open_escalation=open_escalation is not None,
+            )
+        )
+    return results
+
+
+class MessageOut(BaseModel):
+    id: str
+    role: str
+    content: str
+    created_at: datetime
+
+
+class TraceStepOut(BaseModel):
+    step: int
+    agent_name: str
+    model: str | None
+    input: dict
+    output: dict
+    confidence: float | None
+    latency_ms: int | None
+    input_tokens: int | None
+    output_tokens: int | None
+    cost_usd: float | None
+    created_at: datetime
+
+
+class ConversationDetail(BaseModel):
+    id: str
+    external_customer_id: str | None
+    created_at: datetime
+    messages: list[MessageOut]
+    traces: list[TraceStepOut]
+
+
+@app.get("/conversations/{conversation_id}", response_model=ConversationDetail, tags=["traces"])
+async def get_conversation(
+    conversation_id: str,
+    principal: Principal = Depends(current_principal),
+    session: AsyncSession = Depends(tenant_session),
+) -> ConversationDetail:
+    conversation = (
+        await session.execute(select(Conversation).where(Conversation.id == conversation_id))
+    ).scalar_one_or_none()
+    if conversation is None:
+        # RLS makes another tenant's conversation indistinguishable from a
+        # nonexistent one, which is the correct thing to leak: nothing.
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "conversation not found")
+
+    messages = (
+        await session.execute(
+            select(Message).where(Message.conversation_id == conversation_id).order_by(Message.created_at)
+        )
+    ).scalars().all()
+    traces = (
+        await session.execute(
+            select(AgentTrace).where(AgentTrace.conversation_id == conversation_id).order_by(AgentTrace.step)
+        )
+    ).scalars().all()
+
+    return ConversationDetail(
+        id=str(conversation.id),
+        external_customer_id=conversation.external_customer_id,
+        created_at=conversation.created_at,
+        messages=[
+            MessageOut(id=str(m.id), role=m.role, content=m.content, created_at=m.created_at) for m in messages
+        ],
+        traces=[
+            TraceStepOut(
+                step=t.step, agent_name=t.agent_name, model=t.model, input=t.input, output=t.output,
+                confidence=t.confidence, latency_ms=t.latency_ms, input_tokens=t.input_tokens,
+                output_tokens=t.output_tokens, cost_usd=float(t.cost_usd) if t.cost_usd is not None else None,
+                created_at=t.created_at,
+            )
+            for t in traces
         ],
     )

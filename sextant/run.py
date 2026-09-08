@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import re
 import sys
 import time
 from collections import defaultdict
@@ -22,11 +23,18 @@ from app.orchestrator import handle_message
 GOLDEN_SET = Path(__file__).parent / "golden_set.jsonl"
 RESULTS_DIR = Path(__file__).parent / "results"
 
-REFUSAL_MARKERS = (
-    "do not know", "don't know", "not have", "no information", "cannot find",
-    "not sure", "don't have", "unable to", "connect you with a human",
-    "connect you with someone", "connecting you with someone",
-    "not something we handle",
+REFUSAL_PATTERNS = re.compile(
+    r"do(?:es)? not know|don't know|not have|no information"
+    r"|(?:cannot|can't|could not|couldn't|was(?:n't| not) able to) (?:find|locate|see)"
+    r"|not sure|don't have|unable to|can(?:not|'t) (?:help|assist|answer|look|check|confirm)"
+    r"|(?:out|outside) (?:of )?(?:what|the things) (?:we|i) (?:handle|do|cover|offer)"
+    r"|not something (?:we|i) (?:handle|do|cover|offer)"
+    r"|(?:isn't|is not|not) something (?:we|i)"
+    r"|connect(?:ing)? you with|pass(?:ed|ing)? (?:your|this|it) .{0,30}(?:along|on|over)"
+    r"|hand(?:ing|ed)? (?:your|this|it) .{0,30}(?:over|to)"
+    r"|someone (?:who can|from our team|qualified)"
+    r"|check(?:ing)? (?:with|for) you",
+    re.IGNORECASE,
 )
 
 
@@ -63,7 +71,7 @@ class CaseResult:
 
     @property
     def refused_correctly(self) -> bool:
-        return self.actual_escalate or any(m in self.answer.lower() for m in REFUSAL_MARKERS)
+        return self.actual_escalate or bool(REFUSAL_PATTERNS.search(self.answer))
 
 
 async def _load_cases(kind: str | None, tenant: str | None) -> list[dict]:

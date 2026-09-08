@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 
 from typing import Any
@@ -10,6 +11,16 @@ from groq import APIError, AsyncGroq, RateLimitError
 
 from app.config import get_settings
 from app.providers.base import Completion, ProviderError, ToolCallRequest
+
+RATE_LIMIT_ATTEMPTS = 5
+_RETRY_AFTER = re.compile(r"try again in ([0-9.]+)s", re.IGNORECASE)
+
+
+def _retry_delay(error: Exception, attempt: int) -> float:
+    match = _RETRY_AFTER.search(str(error))
+    if match:
+        return min(float(match.group(1)) + 0.5, 30.0)
+    return min(1.5 * (2**attempt), 30.0)
 
 
 class GroqProvider:
@@ -36,7 +47,7 @@ class GroqProvider:
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = "auto"
-        for attempt in range(3):
+        for attempt in range(RATE_LIMIT_ATTEMPTS):
             try:
                 r = await self._client.chat.completions.create(
                     model=self.model,
@@ -50,9 +61,11 @@ class GroqProvider:
                 )
                 break
             except RateLimitError as e:
-                if attempt == 2:
-                    raise ProviderError(f"groq rate-limited 3 times in a row: {e}") from e
-                await asyncio.sleep(1.5 * (attempt + 1))
+                if attempt == RATE_LIMIT_ATTEMPTS - 1:
+                    raise ProviderError(
+                        f"groq rate-limited {RATE_LIMIT_ATTEMPTS} times in a row: {e}"
+                    ) from e
+                await asyncio.sleep(_retry_delay(e, attempt))
             except APIError as e:
                 raise ProviderError(f"groq request failed: {e}") from e
 

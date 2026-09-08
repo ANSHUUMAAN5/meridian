@@ -557,3 +557,69 @@ async def get_sextant_run(run_id: str, principal: Principal = Depends(current_pr
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no such Sextant run")
     data = json.loads(path.read_text())
     return SextantRunDetail(run_id=run_id, summary=data.get("summary", {}), cases=data.get("cases", []))
+
+
+class PublicMetrics(BaseModel):
+    routing_accuracy: float | None
+    escalation_accuracy: float | None
+    adversarial_safe_rate: str | None
+    hard_negative_refusal_rate: float | None
+    latency_p50_ms: int | None
+    eval_case_count: int | None
+    tenant_count: int
+    conversation_count: int
+    document_count: int
+    escalations_resolved: int
+
+
+@app.get("/public/metrics", response_model=PublicMetrics, tags=["public"])
+async def public_metrics() -> PublicMetrics:
+    settings = get_settings()
+    files = _sextant_files()
+    summary: dict = {}
+    if files:
+        try:
+            summary = json.loads(files[0].read_text()).get("summary", {})
+        except (json.JSONDecodeError, OSError):
+            summary = {}
+
+    conversation_count = 0
+    document_count = 0
+    escalations_resolved = 0
+    tenant_count = 0
+
+    async with get_sessionmaker()() as session:
+        for slug in settings.demo_tenant_slugs:
+            tenant = (
+                await session.execute(select(Tenant).where(Tenant.slug == slug))
+            ).scalar_one_or_none()
+            if tenant is None:
+                continue
+            tenant_count += 1
+            await session.execute(
+                text("select set_config('app.current_tenant', :t, true)"), {"t": str(tenant.id)}
+            )
+            conversation_count += (
+                await session.execute(select(func.count()).select_from(Conversation))
+            ).scalar_one()
+            document_count += (
+                await session.execute(select(func.count()).select_from(Document))
+            ).scalar_one()
+            escalations_resolved += (
+                await session.execute(
+                    select(func.count()).select_from(Escalation).where(Escalation.status == "resolved")
+                )
+            ).scalar_one()
+
+    return PublicMetrics(
+        routing_accuracy=summary.get("routing_accuracy"),
+        escalation_accuracy=summary.get("routing_escalation_accuracy"),
+        adversarial_safe_rate=summary.get("adversarial_safe_rate"),
+        hard_negative_refusal_rate=summary.get("hard_negative_refusal_rate"),
+        latency_p50_ms=summary.get("latency_p50_ms"),
+        eval_case_count=summary.get("total_cases"),
+        tenant_count=tenant_count,
+        conversation_count=conversation_count,
+        document_count=document_count,
+        escalations_resolved=escalations_resolved,
+    )

@@ -19,7 +19,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
   const { session, loaded, clearSession } = useSession();
 
   useEffect(() => {
-    if (loaded && !session) router.replace("/");
+    if (loaded && !session) router.replace("/demo");
   }, [loaded, session, router]);
 
   if (!loaded) return null;
@@ -39,7 +39,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
             className="shrink-0 font-mono text-[11px] uppercase tracking-wider text-muted-text transition-colors hover:text-text sm:hidden"
             onClick={() => {
               clearSession();
-              router.push("/");
+              router.push("/demo");
             }}
           >
             exit
@@ -65,7 +65,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
           className="hidden shrink-0 font-mono text-[11px] uppercase tracking-wider text-muted-text transition-colors hover:text-text sm:block"
           onClick={() => {
             clearSession();
-            router.push("/");
+            router.push("/demo");
           }}
         >
           exit demo

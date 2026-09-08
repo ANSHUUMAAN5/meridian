@@ -194,6 +194,23 @@ export function resolveEscalation(token: string, id: string, resolutionNote: str
   });
 }
 
+export type PublicMetrics = {
+  routing_accuracy: number | null;
+  escalation_accuracy: number | null;
+  adversarial_safe_rate: string | null;
+  hard_negative_refusal_rate: number | null;
+  latency_p50_ms: number | null;
+  eval_case_count: number | null;
+  tenant_count: number;
+  conversation_count: number;
+  document_count: number;
+  escalations_resolved: number;
+};
+
+export function getPublicMetrics(): Promise<PublicMetrics> {
+  return request("/public/metrics");
+}
+
 export function sendChatMessage(
   token: string,
   input: { message: string; conversation_id?: string; customer_id?: string },

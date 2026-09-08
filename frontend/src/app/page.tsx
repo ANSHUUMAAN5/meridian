@@ -1,148 +1,256 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
-import { demoLogin, ApiError } from "@/lib/api";
-import { useSession } from "@/lib/session";
+import HeroRouting from "./_components/HeroRouting";
+import LiveMetrics from "./_components/LiveMetrics";
 
-const DEMO_TENANTS = [
+const PILLARS = [
   {
-    slug: "kite",
-    name: "Kite & Co",
-    blurb: "Apparel retailer",
-    detail: "Returns, sizing, shipping — and a refund it can actually approve, with your say-so.",
-    accent: "var(--compass)",
+    title: "Isolated",
+    color: "var(--compass)",
+    body: "Every tenant's documents, orders, and conversations sit behind Postgres row-level security, not an application-layer filter. A cross-tenant test suite proves it in CI on every commit.",
   },
   {
-    slug: "nimbus",
-    name: "Nimbus Health",
-    blurb: "Online pharmacy",
-    detail: "Prescriptions, refills — and one hard rule: medical questions never get answered alone.",
-    accent: "var(--almanac)",
+    title: "Gated",
+    color: "var(--manifest)",
+    body: "Reads run autonomously above the confidence line. Writes need a proposal the customer confirms, a ceiling above which they always escalate, and a hard rule that overrides confidence entirely for anything that should never be automated.",
+  },
+  {
+    title: "Measured",
+    color: "var(--beacon)",
+    body: "Every routing decision, every tool call, every escalation is logged with confidence, latency, and cost. A labeled eval suite replays them and produces a real accuracy number — not a screenshot.",
   },
 ];
 
-export default function Home() {
-  const router = useRouter();
-  const { setSession } = useSession();
-  const [pending, setPending] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+const COMPONENTS = [
+  { name: "Compass", kind: "agent", color: "var(--compass)", body: "Reads the message, decides who handles it." },
+  { name: "Almanac", kind: "agent", color: "var(--almanac)", body: "Answers from the tenant's own documents, with citations." },
+  { name: "Manifest", kind: "agent", color: "var(--manifest)", body: "Answers account questions via tool calls, in a bounded reasoning loop." },
+  { name: "Beacon", kind: "agent", color: "var(--beacon)", body: "Escalates to a human with the full reasoning attached." },
+  { name: "Threshold", kind: "system", color: "var(--faint-text)", body: "The deterministic gate. Not an agent — a comparison should never be persuadable." },
+  { name: "Trace", kind: "system", color: "var(--faint-text)", body: "Logs every step: model, prompt, confidence, latency, tokens, cost." },
+  { name: "Sextant", kind: "system", color: "var(--faint-text)", body: "The eval harness. Replays labeled cases and scores the whole system." },
+  { name: "Relay", kind: "system", color: "var(--faint-text)", body: "The human inbox. Resolutions feed back in as new labeled cases." },
+];
 
-  async function enterDemo(slug: string) {
-    setPending(slug);
-    setError(null);
-    try {
-      const result = await demoLogin(slug);
-      setSession({ token: result.access_token, tenant: result.tenant, customerId: result.customer_id });
-      router.push("/console/chat");
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Could not reach the Meridian API.");
-    } finally {
-      setPending(null);
-    }
-  }
+const ARCH_ROWS = [
+  { label: "browser", items: ["landing", "console"] },
+  { label: "fastapi", items: ["compass", "almanac", "manifest", "beacon"] },
+  { label: "postgres + pgvector", items: ["tenants", "documents", "orders", "traces"] },
+];
 
+export default function Landing() {
   return (
-    <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden bg-canvas px-6">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.4]"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, color-mix(in srgb, var(--line) 60%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--line) 60%, transparent) 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
-          maskImage: "radial-gradient(ellipse 60% 50% at 50% 40%, black 0%, transparent 75%)",
-        }}
-      />
-
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="relative z-10 w-full max-w-xl"
-      >
-        <div className="mb-12 text-center">
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1, duration: 0.4 }}
-            className="mb-4 font-mono text-[11px] uppercase tracking-[0.2em] text-faint-text"
+    <div className="flex flex-1 flex-col bg-canvas">
+      <header className="flex items-center justify-between border-b border-line px-6 py-4">
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-compass" style={{ boxShadow: "0 0 8px 1px var(--compass)" }} />
+          <span className="font-mono text-[12px] uppercase tracking-[0.15em] text-text">meridian</span>
+        </div>
+        <div className="flex items-center gap-5">
+          <a
+            href="https://github.com/ANSHUUMAAN5/meridian"
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono text-[11px] uppercase tracking-wider text-muted-text transition-colors hover:text-text"
           >
-            multi-tenant · multi-agent · confidence-gated
-          </motion.p>
-          <h1 className="text-5xl font-semibold tracking-tight text-text">Meridian</h1>
+            github
+          </a>
+          <Link
+            href="/demo"
+            className="rounded-md bg-compass px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-wider text-white transition-opacity hover:opacity-90"
+          >
+            try the demo
+          </Link>
+        </div>
+      </header>
 
-          <div className="relative my-6 flex items-center justify-center">
-            <div className="h-px w-full max-w-[280px] bg-gradient-to-r from-transparent via-line-strong to-transparent" />
-            <motion.div
-              className="absolute h-1.5 w-1.5 rounded-full bg-compass"
-              style={{ boxShadow: "0 0 12px 2px var(--compass)" }}
-              animate={{ left: ["18%", "82%", "18%"] }}
-              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            />
+      {/* announcement */}
+      <div className="border-b border-line bg-surface/60 px-6 py-2 text-center">
+        <p className="font-mono text-[11px] text-muted-text">
+          Real accuracy, not a screenshot —{" "}
+          <a href="#metrics" className="text-compass hover:underline">
+            see the live numbers
+          </a>
+        </p>
+      </div>
+
+      {/* hero */}
+      <section className="relative overflow-hidden px-6 py-20">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.35]"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, color-mix(in srgb, var(--line) 60%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--line) 60%, transparent) 1px, transparent 1px)",
+            backgroundSize: "56px 56px",
+            maskImage: "radial-gradient(ellipse 70% 60% at 50% 30%, black 0%, transparent 75%)",
+          }}
+        />
+        <div className="relative z-10 mx-auto grid max-w-6xl gap-12 lg:grid-cols-2 lg:items-center">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+            <p className="mb-4 font-mono text-[11px] uppercase tracking-[0.2em] text-faint-text">
+              multi-tenant · multi-agent · confidence-gated
+            </p>
+            <h1 className="mb-5 text-5xl font-semibold tracking-tight text-text">
+              Route every question to the right specialist.
+              <br />
+              <span className="text-muted-text">Know exactly when not to.</span>
+            </h1>
+            <p className="mb-8 max-w-md text-[15px] leading-relaxed text-muted-text">
+              Meridian answers support questions from a company&apos;s own documents and order data, hands
+              anything risky or unclear to a human, and records every decision it makes — with the numbers
+              to prove how often it gets it right.
+            </p>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/demo"
+                className="rounded-md bg-compass px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+              >
+                Try the demo →
+              </Link>
+              <a href="#components" className="font-mono text-[11px] uppercase tracking-wider text-muted-text hover:text-text">
+                see how it works
+              </a>
+            </div>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.15 }}>
+            <HeroRouting />
+          </motion.div>
+        </div>
+      </section>
+
+      {/* live metrics */}
+      <section id="metrics" className="border-t border-line px-6 py-16">
+        <div className="mx-auto max-w-5xl">
+          <p className="mb-1 text-center font-mono text-[11px] uppercase tracking-[0.15em] text-faint-text">
+            live from the database
+          </p>
+          <h2 className="mb-8 text-center text-2xl font-semibold text-text">Not hardcoded. Not a screenshot.</h2>
+          <LiveMetrics />
+        </div>
+      </section>
+
+      {/* pillars */}
+      <section className="border-t border-line px-6 py-16">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="mb-10 text-center text-2xl font-semibold text-text">Three properties, enforced structurally</h2>
+          <div className="grid gap-5 sm:grid-cols-3">
+            {PILLARS.map((p, i) => (
+              <motion.div
+                key={p.title}
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.4, delay: i * 0.08 }}
+                className="rounded-xl border border-line bg-surface p-5"
+              >
+                <div className="mb-3 h-[2px] w-8 rounded-full" style={{ background: p.color }} />
+                <h3 className="mb-2 text-base font-semibold text-text">{p.title}</h3>
+                <p className="text-sm leading-relaxed text-muted-text">{p.body}</p>
+              </motion.div>
+            ))}
           </div>
+        </div>
+      </section>
 
-          <p className="text-[15px] leading-relaxed text-muted-text">
-            Above the line, the system answers on its own.
-            <br />
-            Below it, a human takes over. Pick a company to watch it happen.
+      {/* components */}
+      <section id="components" className="border-t border-line px-6 py-16">
+        <div className="mx-auto max-w-5xl">
+          <p className="mb-1 text-center font-mono text-[11px] uppercase tracking-[0.15em] text-faint-text">
+            the pieces
+          </p>
+          <h2 className="mb-10 text-center text-2xl font-semibold text-text">Four agents. Four systems.</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {COMPONENTS.map((c, i) => (
+              <motion.div
+                key={c.name}
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.35, delay: (i % 4) * 0.06 }}
+                className="relative overflow-hidden rounded-xl border border-line bg-surface p-4"
+              >
+                <div className="absolute inset-x-0 top-0 h-[2px] opacity-70" style={{ background: c.color }} />
+                <div className="mb-1.5 flex items-baseline justify-between">
+                  <span className="text-sm font-medium text-text">{c.name}</span>
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-faint-text">{c.kind}</span>
+                </div>
+                <p className="text-[13px] leading-relaxed text-muted-text">{c.body}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* architecture */}
+      <section className="border-t border-line px-6 py-16">
+        <div className="mx-auto max-w-4xl">
+          <p className="mb-1 text-center font-mono text-[11px] uppercase tracking-[0.15em] text-faint-text">
+            architecture
+          </p>
+          <h2 className="mb-10 text-center text-2xl font-semibold text-text">Three tiers, one guarantee</h2>
+          <div className="flex flex-col gap-3">
+            {ARCH_ROWS.map((row, i) => (
+              <motion.div
+                key={row.label}
+                initial={{ opacity: 0, x: -10 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.4, delay: i * 0.1 }}
+                className="rounded-xl border border-line bg-surface p-4"
+              >
+                <p className="mb-2.5 font-mono text-[10px] uppercase tracking-[0.15em] text-faint-text">{row.label}</p>
+                <div className="flex flex-wrap gap-2">
+                  {row.items.map((item) => (
+                    <span key={item} className="rounded-md bg-canvas px-2.5 py-1 font-mono text-[11.5px] text-text">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+                {i < ARCH_ROWS.length - 1 && (
+                  <div className="mt-3 flex justify-center text-faint-text">↓</div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+          <p className="mt-6 text-center text-sm text-muted-text">
+            Row-level security governs the postgres tier — the application layer cannot leak across tenants
+            even with a broken query. It&apos;s proven, not assumed: an automated cross-tenant test suite runs
+            in CI on every commit.
           </p>
         </div>
+      </section>
 
-        <div className="flex flex-col gap-3">
-          {DEMO_TENANTS.map((t, i) => (
-            <motion.button
-              key={t.slug}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 + i * 0.1, duration: 0.4, ease: "easeOut" }}
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.99 }}
-              disabled={pending !== null}
-              onClick={() => enterDemo(t.slug)}
-              className="group relative overflow-hidden rounded-xl border border-line bg-surface px-5 py-4 text-left transition-colors hover:border-line-strong disabled:opacity-60"
-            >
-              <div
-                className="absolute inset-x-0 top-0 h-[2px] opacity-70"
-                style={{ background: t.accent }}
-              />
-              <div className="flex items-baseline justify-between">
-                <span className="text-base font-medium text-text">{t.name}</span>
-                <span className="font-mono text-[11px] uppercase tracking-wider text-faint-text">
-                  {t.blurb}
-                </span>
-              </div>
-              <p className="mt-1.5 text-sm text-muted-text">{t.detail}</p>
-              <div className="mt-3 flex items-center gap-1.5 font-mono text-xs" style={{ color: t.accent }}>
-                {pending === t.slug ? (
-                  <span>entering…</span>
-                ) : (
-                  <>
-                    <span>enter as {t.name.toLowerCase()}</span>
-                    <motion.span
-                      className="inline-block"
-                      animate={{ x: [0, 3, 0] }}
-                      transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-                    >
-                      →
-                    </motion.span>
-                  </>
-                )}
-              </div>
-            </motion.button>
-          ))}
-        </div>
+      {/* CTA + footer */}
+      <section className="border-t border-line px-6 py-20 text-center">
+        <h2 className="mb-3 text-2xl font-semibold text-text">See it route a question in real time.</h2>
+        <p className="mx-auto mb-8 max-w-md text-sm text-muted-text">
+          Pick a demo company, ask something clean, then ask something vague — and watch it decide it doesn&apos;t
+          know.
+        </p>
+        <Link
+          href="/demo"
+          className="inline-block rounded-md bg-compass px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
+        >
+          Try the demo →
+        </Link>
+      </section>
 
-        {error && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mt-4 rounded-md border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger"
+      <footer className="border-t border-line px-6 py-6">
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-3 sm:flex-row">
+          <p className="font-mono text-[11px] text-faint-text">meridian — built end to end on free-tier infrastructure</p>
+          <a
+            href="https://github.com/ANSHUUMAAN5/meridian"
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono text-[11px] uppercase tracking-wider text-muted-text hover:text-text"
           >
-            {error}
-          </motion.p>
-        )}
-      </motion.div>
+            source on github
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }

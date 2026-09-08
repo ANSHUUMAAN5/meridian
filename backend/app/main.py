@@ -3,9 +3,9 @@ from __future__ import annotations
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, text
@@ -352,4 +352,96 @@ async def get_conversation(
             )
             for t in traces
         ],
+    )
+
+
+class EscalationOut(BaseModel):
+    id: str
+    conversation_id: str
+    reason: str
+    confidence: float | None
+    status: str
+    assigned_to: str | None
+    resolution_note: str | None
+    resolved_at: datetime | None
+    created_at: datetime
+
+
+@app.get("/escalations", response_model=list[EscalationOut], tags=["relay"])
+async def list_escalations(
+    status_filter: str | None = Query(default=None, alias="status"),
+    principal: Principal = Depends(current_principal),
+    session: AsyncSession = Depends(tenant_session),
+) -> list[EscalationOut]:
+    stmt = select(Escalation).order_by(Escalation.created_at.desc()).limit(100)
+    if status_filter:
+        stmt = stmt.where(Escalation.status == status_filter)
+    escalations = (await session.execute(stmt)).scalars().all()
+    return [
+        EscalationOut(
+            id=str(e.id), conversation_id=str(e.conversation_id), reason=e.reason,
+            confidence=e.confidence, status=e.status,
+            assigned_to=str(e.assigned_to) if e.assigned_to else None,
+            resolution_note=e.resolution_note, resolved_at=e.resolved_at, created_at=e.created_at,
+        )
+        for e in escalations
+    ]
+
+
+async def _get_escalation_or_404(session: AsyncSession, escalation_id: str) -> Escalation:
+    escalation = (
+        await session.execute(select(Escalation).where(Escalation.id == escalation_id))
+    ).scalar_one_or_none()
+    if escalation is None:
+        # RLS makes another tenant's escalation indistinguishable from a
+        # nonexistent one, which is the correct thing to leak: nothing.
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "escalation not found")
+    return escalation
+
+
+@app.post("/escalations/{escalation_id}/claim", response_model=EscalationOut, tags=["relay"])
+async def claim_escalation(
+    escalation_id: str,
+    principal: Principal = Depends(current_principal),
+    session: AsyncSession = Depends(tenant_session),
+) -> EscalationOut:
+    escalation = await _get_escalation_or_404(session, escalation_id)
+    if escalation.status != "open":
+        raise HTTPException(status.HTTP_409_CONFLICT, f"escalation is already {escalation.status}")
+    escalation.status = "claimed"
+    escalation.assigned_to = principal.user_id
+    await session.flush()
+    return EscalationOut(
+        id=str(escalation.id), conversation_id=str(escalation.conversation_id), reason=escalation.reason,
+        confidence=escalation.confidence, status=escalation.status,
+        assigned_to=str(escalation.assigned_to), resolution_note=escalation.resolution_note,
+        resolved_at=escalation.resolved_at, created_at=escalation.created_at,
+    )
+
+
+class ResolveEscalation(BaseModel):
+    resolution_note: str = Field(min_length=1, max_length=2000)
+
+
+@app.post("/escalations/{escalation_id}/resolve", response_model=EscalationOut, tags=["relay"])
+async def resolve_escalation(
+    escalation_id: str,
+    body: ResolveEscalation,
+    principal: Principal = Depends(current_principal),
+    session: AsyncSession = Depends(tenant_session),
+) -> EscalationOut:
+    escalation = await _get_escalation_or_404(session, escalation_id)
+    if escalation.status == "resolved":
+        raise HTTPException(status.HTTP_409_CONFLICT, "escalation is already resolved")
+    escalation.status = "resolved"
+    escalation.resolution_note = body.resolution_note
+    escalation.resolved_at = datetime.now(UTC)
+    if escalation.assigned_to is None:
+        escalation.assigned_to = principal.user_id
+    await session.flush()
+    return EscalationOut(
+        id=str(escalation.id), conversation_id=str(escalation.conversation_id), reason=escalation.reason,
+        confidence=escalation.confidence, status=escalation.status,
+        assigned_to=str(escalation.assigned_to), resolution_note=escalation.resolution_note,
+        resolved_at=escalation.resolved_at, created_at=escalation.created_at,
     )

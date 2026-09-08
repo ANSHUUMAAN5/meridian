@@ -97,6 +97,35 @@ export function getConversation(token: string, id: string): Promise<Conversation
   return request(`/conversations/${id}`, { headers: { Authorization: `Bearer ${token}` } });
 }
 
+export type EscalationOut = {
+  id: string;
+  conversation_id: string;
+  reason: string;
+  confidence: number | null;
+  status: "open" | "claimed" | "resolved";
+  assigned_to: string | null;
+  resolution_note: string | null;
+  resolved_at: string | null;
+  created_at: string;
+};
+
+export function listEscalations(token: string, status?: string): Promise<EscalationOut[]> {
+  const qs = status ? `?status=${status}` : "";
+  return request(`/escalations${qs}`, { headers: { Authorization: `Bearer ${token}` } });
+}
+
+export function claimEscalation(token: string, id: string): Promise<EscalationOut> {
+  return request(`/escalations/${id}/claim`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+}
+
+export function resolveEscalation(token: string, id: string, resolutionNote: string): Promise<EscalationOut> {
+  return request(`/escalations/${id}/resolve`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ resolution_note: resolutionNote }),
+  });
+}
+
 export function sendChatMessage(
   token: string,
   input: { message: string; conversation_id?: string; customer_id?: string },

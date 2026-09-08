@@ -8,6 +8,7 @@ import { useSession } from "@/lib/session";
 const NAV = [
   { href: "/console/chat", label: "chat" },
   { href: "/console/traces", label: "traces" },
+  { href: "/console/relay", label: "relay" },
 ];
 
 export default function ConsoleLayout({ children }: { children: React.ReactNode }) {

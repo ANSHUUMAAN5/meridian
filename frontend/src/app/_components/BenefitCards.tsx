@@ -58,7 +58,7 @@ export default function BenefitCards() {
       <Card
         span
         title="It answers from your words, not the internet"
-        body="Upload the policies your team already answers from. Every reply points back to the document it came from, so you can check it."
+        body="Every reply points back to the document it came from."
         from="#4a8b54"
         to="#356b41"
       >
@@ -82,7 +82,7 @@ export default function BenefitCards() {
       {/* knows when to stop */}
       <Card
         title="It knows when to stop and ask"
-        body="When it isn't sure enough, it hands the conversation to a person instead of inventing an answer."
+        body="Not sure enough, it hands you to a person."
         from="#d08a2c"
         to="#a86a18"
       >
@@ -106,31 +106,41 @@ export default function BenefitCards() {
       </Card>
 
       {/* never crosses companies */}
-      <Card
-        title="One company never sees another"
-        body="Separation is enforced by the database itself, not by code remembering to filter. An automated test proves it on every change."
-        from="#2e7da8"
-        to="#1f5e80"
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-60px" }}
+        transition={{ duration: 0.5 }}
+        className="relative flex min-h-[300px] flex-col justify-between overflow-hidden rounded-3xl p-7"
+        style={{ background: "linear-gradient(109.6deg, rgba(163,213,255,1) 11.3%, rgba(4,137,137,1) 86.7%)" }}
       >
-        <div className="flex w-full max-w-[240px] items-center gap-2 px-2">
-          <Chip className="flex-1 text-center">Kite &amp; Co</Chip>
-          <motion.span
-            className="text-[18px] text-white/70"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.4 }}
-          >
-            ⊘
-          </motion.span>
-          <Chip className="flex-1 text-center">Nimbus</Chip>
+        <h3 className="relative z-10 max-w-[15ch] text-[22px] font-semibold leading-tight text-white">
+          One company never sees another
+        </h3>
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="flex w-full max-w-[240px] items-center gap-2 px-2">
+            <Chip className="flex-1 text-center">Kite &amp; Co</Chip>
+            <motion.span
+              className="text-[18px] text-white/70"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.4 }}
+            >
+              ⊘
+            </motion.span>
+            <Chip className="flex-1 text-center">Nimbus</Chip>
+          </div>
         </div>
-      </Card>
+        <p className="relative z-10 max-w-[34ch] text-[13.5px] leading-relaxed text-white/85">
+          Enforced by the database itself, not by code that has to remember.
+        </p>
+      </motion.div>
 
       {/* every decision recorded */}
       <Card
         title="Every decision is on the record"
-        body="Which specialist answered, how sure it was, what it cost, how long it took — written down for every single message."
+        body="Who answered, how sure, what it cost. Every message."
         from="#9c5a7d"
         to="#7a4260"
       >

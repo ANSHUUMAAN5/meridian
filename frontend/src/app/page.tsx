@@ -18,22 +18,22 @@ const SETUP = [
   {
     n: "01",
     title: "Add what you already know",
-    body: "Drop in the return policy, the shipping rules, the FAQ your team keeps re-typing. It's searchable a couple of seconds later.",
+    body: "Your policies, searchable in seconds.",
   },
   {
     n: "02",
     title: "Connect your orders",
-    body: "So it can answer \"where is my order\" with a real answer, from your real system, instead of a canned one.",
+    body: "Real answers from your real system.",
   },
   {
     n: "03",
     title: "Say what it may decide alone",
-    body: "A clothing store and a pharmacy need different limits. Mark anything that should always reach a person, and nothing overrides it.",
+    body: "Mark what should always reach a person.",
   },
   {
     n: "04",
     title: "Watch it work",
-    body: "Every answer it gives, every question it refused, and every case it passed to your team — all in one place.",
+    body: "Every answer, every refusal, in one place.",
   },
 ];
 
@@ -52,6 +52,13 @@ export default function Landing() {
 
       {/* hero */}
       <section className="relative overflow-hidden lg:min-h-[620px]">
+        <div
+          className="pointer-events-none absolute -left-40 -top-40 h-[560px] w-[560px] opacity-40 lg:opacity-60"
+          style={{
+            background:
+              "radial-gradient(circle farthest-corner at 30% 30%, rgba(202,248,255,0.9) 0%, rgba(186,204,227,0.55) 45%, transparent 75%)",
+          }}
+        />
         <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[56%] lg:block">
           <img src={HERO_PHOTO} alt="" className="h-full w-full object-cover" style={{ objectPosition: "60% 45%" }} />
           <div
@@ -71,16 +78,11 @@ export default function Landing() {
             transition={{ duration: 0.5 }}
             className="max-w-xl"
           >
-            <h1 className="mb-5 text-[42px] font-semibold leading-[1.08] tracking-tight text-text sm:text-[52px]">
+            <h1 className="mb-8 text-[42px] font-semibold leading-[1.08] tracking-tight text-text sm:text-[52px]">
               Answer your customers.
               <br />
               Know when not to.
             </h1>
-            <p className="mb-8 max-w-md text-[16px] leading-relaxed text-muted-text">
-              Meridian handles the questions your support team answers a hundred times a week — from your
-              own documents and your own order data. When it isn&apos;t sure, it says so and passes the
-              customer to a person.
-            </p>
             <div className="flex flex-wrap items-center gap-4">
               <a
                 href="#demo"
@@ -118,7 +120,7 @@ export default function Landing() {
             viewport={{ once: true, margin: "-60px" }}
             className="mb-8 max-w-2xl text-[30px] font-semibold leading-[1.15] tracking-tight text-text"
           >
-            Fewer repeat questions. No invented answers.
+            What it actually does
           </motion.h2>
           <BenefitCards />
         </div>
@@ -129,7 +131,7 @@ export default function Landing() {
         id="demo"
         bg="var(--panel-sage)"
         title="Try it on two different companies"
-        lede="This is the real thing, not a video. Ask a clothing store and a pharmacy the same question and watch the answers come back different — because each one can only see its own information."
+        lede="This is the real thing, not a video."
       >
         <LiveTenantDemo />
       </Section>
@@ -139,7 +141,7 @@ export default function Landing() {
         id="setup"
         bg="var(--panel-sand)"
         title="Four steps to point it at your business"
-        lede="The system is the same for everyone. What it knows, what it can reach, and what it's allowed to decide are entirely yours."
+        lede="Same system for everyone. What it knows is entirely yours."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           {SETUP.map((s, i) => (
@@ -164,15 +166,14 @@ export default function Landing() {
         id="safety"
         bg="var(--panel-blush)"
         title="It asks a person when it should"
-        lede="Some questions should never get an automatic answer, however confident the system sounds. Drag the slider and watch what changes hands — these are real scores from a real test run."
+        lede="Drag the slider. These are real scores from a real test run."
       >
         <div className="grid gap-6 lg:grid-cols-[1fr_300px] lg:items-start">
           <ThresholdPlayground />
           <div className="overflow-hidden rounded-2xl border border-line">
             <img src={SUPPORT_PHOTO} alt="Support team at work" className="h-[240px] w-full object-cover lg:h-[300px]" />
             <p className="bg-surface px-5 py-4 text-[13.5px] leading-relaxed text-muted-text">
-              Anything it refuses arrives in your team&apos;s inbox with the question, what it already
-              tried, and what it found — so nobody starts from scratch.
+              Refusals land in your team&apos;s inbox — question, context, and all.
             </p>
           </div>
         </div>
@@ -182,7 +183,7 @@ export default function Landing() {
       <Section
         id="team"
         title="A small team of specialists, not one know-it-all"
-        lede="Each one has a single job and can only reach what that job needs. The one that reads your documents cannot touch an order. The one that changes an order always asks you first."
+        lede="Each one has a single job, and can only reach what that job needs."
       >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {TEAM.map((c, i) => (
@@ -207,7 +208,7 @@ export default function Landing() {
         id="numbers"
         bg="var(--panel-sky)"
         title="The numbers come from the running system"
-        lede="Not a screenshot, not typed in by hand. Accuracy is measured by replaying a set of questions whose right answers were written down in advance."
+        lede="Not a screenshot. Not typed in by hand."
       >
         <LiveMetrics />
       </Section>
@@ -219,8 +220,7 @@ export default function Landing() {
             Try to catch it out.
           </h2>
           <p className="mx-auto mb-8 max-w-md text-[15.5px] leading-relaxed text-muted-text">
-            No sign-up. Ask something it should know and watch it cite the answer. Then ask something
-            it shouldn&apos;t, and watch it refuse.
+            No sign-up. Ask it something it shouldn&apos;t know.
           </p>
           <Link
             href="/demo"
@@ -241,8 +241,7 @@ export default function Landing() {
                 <span className="font-mono text-[12px] uppercase tracking-[0.15em] text-text">meridian</span>
               </div>
               <p className="text-[13px] leading-relaxed text-muted-text">
-                Customer support answered from your own documents and order data — with a human in the
-                loop wherever it matters.
+                Support answered from your own data. A human, always in the loop.
               </p>
             </div>
 

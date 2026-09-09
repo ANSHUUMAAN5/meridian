@@ -1,7 +1,6 @@
 "use client";
 
 import { use, useState } from "react";
-import Link from "next/link";
 import Script from "next/script";
 import { demoLogin, ApiError } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -119,9 +118,13 @@ export default function StorePage({ params }: { params: Promise<{ slug: string }
         </button>
         {error && <span style={{ color: "#a33", marginLeft: 8 }}>{error}</span>}
         <span style={{ marginLeft: 12 }}>
-          <Link href="/demo" style={{ color: "#888" }}>
+          {/* A plain <a>, not next/link: leaving this storefront must be a
+              real page load, or the embed script's bubble/iframe -- raw DOM
+              nodes outside React's tree -- stay mounted on whatever page
+              a client-side transition lands on next. */}
+          <a href="/demo" style={{ color: "#888" }}>
             ← back to company picker
-          </Link>
+          </a>
         </span>
       </footer>
 

@@ -103,13 +103,18 @@ export default function DemoPicker() {
                   ))}
                 </ul>
 
-                <Link
+                {/* A plain <a>, not next/link: two different companies'
+                    storefronts share the same /embed.js src, and Next
+                    dedupes script loading by src -- a client-side transition
+                    between them would leave the first tenant's widget
+                    bubble stuck on the second company's page. */}
+                <a
                   href={`/store/${t.slug}`}
                   className="mt-auto rounded-full px-5 py-3 text-center text-[14px] font-medium text-canvas transition-opacity hover:opacity-90"
                   style={{ background: "var(--text)" }}
                 >
                   Visit {t.name}&apos;s website →
-                </Link>
+                </a>
               </div>
             </motion.div>
           ))}

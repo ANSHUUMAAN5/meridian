@@ -161,6 +161,35 @@ export default function Landing() {
         </div>
       </Section>
 
+      {/* embed */}
+      <Section
+        id="embed"
+        title="One script tag, on someone else's actual website"
+        lede="Not a console only you can see — a real chat bubble a company pastes onto their own site."
+      >
+        <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div className="rounded-2xl border border-line bg-surface p-6">
+            <p className="mb-3 text-[13px] text-muted-text">The whole integration:</p>
+            <pre className="overflow-x-auto rounded-xl bg-canvas px-4 py-3 font-mono text-[12.5px] text-text">
+              {'<script src=".../embed.js" data-tenant="kite"></script>'}
+            </pre>
+            <p className="mt-3 text-[13px] leading-relaxed text-muted-text">
+              That&apos;s the whole snippet. The page it lands on next is styled with none of
+              Meridian&apos;s own design — a stand-in for an ordinary company&apos;s real website — so the
+              bubble showing up there proves it, rather than claiming it.
+            </p>
+          </div>
+          <a
+            href="/embed-demo"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block whitespace-nowrap rounded-full bg-text px-6 py-3 text-center text-sm font-medium text-canvas transition-opacity hover:opacity-90"
+          >
+            See it on a fake storefront →
+          </a>
+        </div>
+      </Section>
+
       {/* safety */}
       <Section
         id="safety"
@@ -250,6 +279,7 @@ export default function Landing() {
               links={[
                 { label: "See it work", href: "#demo" },
                 { label: "Set it up", href: "#setup" },
+                { label: "On your website", href: "#embed" },
                 { label: "Why it's safe", href: "#safety" },
                 { label: "The numbers", href: "#numbers" },
               ]}

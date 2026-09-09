@@ -180,7 +180,7 @@ export default function Landing() {
             </p>
           </div>
           <a
-            href="/embed-demo"
+            href="/store/kite"
             target="_blank"
             rel="noreferrer"
             className="inline-block whitespace-nowrap rounded-full bg-text px-6 py-3 text-center text-sm font-medium text-canvas transition-opacity hover:opacity-90"

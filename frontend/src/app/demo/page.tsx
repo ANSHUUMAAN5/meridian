@@ -1,11 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { demoLogin, ApiError } from "@/lib/api";
-import { useSession } from "@/lib/session";
 
 const DEMO_TENANTS = [
   {
@@ -43,24 +39,6 @@ const DEMO_TENANTS = [
 ];
 
 export default function DemoPicker() {
-  const router = useRouter();
-  const { setSession } = useSession();
-  const [pending, setPending] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  async function enterDemo(slug: string) {
-    setPending(slug);
-    setError(null);
-    try {
-      const result = await demoLogin(slug);
-      setSession({ token: result.access_token, tenant: result.tenant, customerId: result.customer_id });
-      router.push("/console/chat");
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Could not reach the Meridian API.");
-      setPending(null);
-    }
-  }
-
   return (
     <div className="flex flex-1 flex-col bg-canvas">
       <header className="border-b border-line">
@@ -125,28 +103,17 @@ export default function DemoPicker() {
                   ))}
                 </ul>
 
-                <button
-                  disabled={pending !== null}
-                  onClick={() => enterDemo(t.slug)}
-                  className="mt-auto rounded-full px-5 py-3 text-[14px] font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-50"
+                <Link
+                  href={`/store/${t.slug}`}
+                  className="mt-auto rounded-full px-5 py-3 text-center text-[14px] font-medium text-canvas transition-opacity hover:opacity-90"
                   style={{ background: "var(--text)" }}
                 >
-                  {pending === t.slug ? "Opening…" : `Enter as ${t.name}`}
-                </button>
+                  Visit {t.name}&apos;s website →
+                </Link>
               </div>
             </motion.div>
           ))}
         </div>
-
-        {error && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mt-6 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger"
-          >
-            {error}
-          </motion.p>
-        )}
 
         <motion.div
           initial={{ opacity: 0 }}

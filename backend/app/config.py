@@ -47,6 +47,11 @@ class Settings(BaseSettings):
 
     demo_tenant_slugs: list[str] = ["kite", "nimbus"]
 
+    cors_origins: str = "http://localhost:3000"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     @field_validator("database_url", "migration_database_url")
     @classmethod
